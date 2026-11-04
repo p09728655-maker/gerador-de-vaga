@@ -1,14 +1,20 @@
 // Primeiro tenta a rede, para receber atualizações; sem internet, usa a cópia guardada.
-const CACHE = "vagas-patrimar-v1";
-const ARQUIVOS = ["./", "index.html", "manifest.json", "icon-192.png", "icon-512.png"];
+// A versão vem do index.html (sw.js?v=VERSAO): publicar uma versão nova troca o cache sozinho.
+const VERSAO = new URL(self.location.href).searchParams.get("v") || "dev";
+const CACHE = "vagas-patrimar-" + VERSAO;
+const ARQUIVOS = ["./", "index.html", "manifest.json", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARQUIVOS)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CACHE)
+      .then(c => c.addAll(ARQUIVOS.map(u => new Request(u, { cache: "reload" }))))
+      .then(() => self.skipWaiting())
+  );
 });
 self.addEventListener("activate", e => {
   e.waitUntil(
     caches.keys()
-      .then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(ks => Promise.all(ks.filter(k => k.startsWith("vagas-patrimar-") && k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
