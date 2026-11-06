@@ -21,11 +21,21 @@ O arquivo sai com o nome da vaga e a rede, por exemplo `Operador de Fresadora - 
 No Chrome e no Edge do computador, abre a janela "Salvar como" com esse nome já preenchido. O navegador lembra a última pasta usada.
 No celular, abre o compartilhar do aparelho (WhatsApp, Instagram, Salvar imagem).
 
+## Sugestão de conteúdo por cargo
+Ao digitar o **Cargo**, o app preenche Requisitos, Diferencial e Principais atividades. A lista de cargos aparece ao clicar no campo.
+- **De onde vem o texto:** primeiro, o último anúncio salvo neste navegador para aquele cargo; se não houver, o modelo padrão (constante `MODELOS`, no `index.html`).
+- **Aprende com o uso:** ao clicar em Salvar PNG, o texto da vaga vira o modelo do cargo neste navegador. Cargo novo entra na lista. Guarda até 80 cargos.
+- **Não apaga o que foi digitado:** só preenche sozinho se os campos estiverem vazios ou com um modelo. Se houver texto próprio, mostra o botão **Usar modelo**. Depois de preencher, **Desfazer** volta ao texto anterior.
+- Não diferencia maiúscula, acento nem "(a)": `operador(a) de cnc` acha `Operador de CNC`.
+- Os modelos padrão são genéricos: o RH deve revisar antes de publicar. Para mudar ou incluir um cargo para todos, edite `MODELOS` e publique uma versão nova.
+- Limite: os modelos aprendidos ficam só no navegador onde a vaga foi salva. Outro computador não vê.
+
 ## Controle de versão
 A versão fica em um lugar só: a constante `VERSAO`, no `index.html`. Ela aparece no rodapé do formulário.
 Ao publicar uma mudança, aumente a versão (ex.: `1.1.0` → `1.2.0`). O `sw.js` lê esse número e renova a cópia offline sozinho. Não é preciso editar o `sw.js`.
 
 ### Histórico
+- **1.2.0**: sugestão de Requisitos, Diferencial e Principais atividades ao digitar o cargo; 20 modelos padrão; o app aprende com cada vaga salva.
 - **1.1.0**: logomarca original no lugar do print desfocado; ícone novo (P e estrela da marca sobre fundo vermelho); botão Instalar aplicativo; tela do computador sem rolagem; arquivo salvo com o nome da vaga; versão visível no app.
 - **1.0.0**: versão inicial.
 

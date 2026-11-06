@@ -83,6 +83,9 @@ input[type=file]:focus-visible+.bt{outline:2px solid var(--acento)}
 .tela img{display:block;max-width:100%;max-height:calc(100vh - 230px);height:auto;box-shadow:0 1px 6px rgb(0 0 0/.2)}
 .aviso{background:var(--aviso-bg);color:var(--aviso-fg);padding:8px 10px;border-radius:6px;font-size:14px}
 .msg{min-height:20px;font-size:14px;color:var(--mudo)}
+.sug{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;background:var(--aviso-bg);color:var(--aviso-fg);padding:5px 6px 5px 10px;border-radius:6px;font-size:13px;line-height:1.3}
+.sug span{flex:1 1 220px}
+.bt.mini{padding:4px 10px;font-size:13px;border-color:currentColor;color:inherit;font-weight:700}
 /* Computador: tela única, sem rolagem. Formulário em 2 colunas + prévia; os textos crescem para ocupar a altura.
    Se a janela for baixa demais, só a coluna que não couber rola, nunca a página. */
 @media (min-width:1120px) and (min-height:560px){
@@ -129,13 +132,15 @@ input[type=file]:focus-visible+.bt{outline:2px solid var(--acento)}
       <fieldset>
         <legend>Vaga</legend>
         <div class="duas">
-          <label>Cargo<input type="text" id="cargo" maxlength="60"></label>
+          <label>Cargo<input type="text" id="cargo" maxlength="60" list="cargos"></label>
+          <datalist id="cargos"></datalist>
           <label>Cidade e estado<input type="text" id="local" maxlength="30"></label>
         </div>
         <label>Chamada<input type="text" id="chamada" maxlength="40"></label>
       </fieldset>
       <fieldset class="cresce">
         <legend>Conteúdo</legend>
+        <div class="sug" id="sug" role="status" hidden><span id="sugTxt"></span><button type="button" class="bt mini" id="sugBt"></button></div>
         <label style="--p:3"><span class="rot">Requisitos <small>Um item por linha</small></span><textarea id="requisitos" rows="3"></textarea></label>
         <label style="--p:2"><span class="rot">Diferencial <small>Deixe vazio para tirar o bloco da arte</small></span><textarea id="diferencial" rows="2"></textarea></label>
         <label style="--p:6"><span class="rot">Principais atividades <small>Um item por linha</small></span><textarea id="atividades" rows="6"></textarea></label>
@@ -246,10 +251,67 @@ const EXEMPLO={
 const CAMPOS=["cargo","local","chamada","requisitos","diferencial","atividades","extras","telefone","email"];
 const CHAVE="geradorVagas.v1";
 /* Versão do aplicativo: fonte única. Ao publicar mudança, aumente aqui; o sw.js renova o cache sozinho. */
-const VERSAO="1.1.0";
+const VERSAO="1.2.0";
 
 function ler(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
 function gravar(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
+
+/* Modelos de conteúdo por cargo: [cargo, requisitos, diferencial, atividades].
+   Texto genérico de ponto de partida: o RH revisa antes de publicar.
+   Para incluir um cargo, acrescente uma linha. Textos curtos: precisam caber nos três formatos. */
+const MODELOS=[
+ ["Operador de Fresadora",EXEMPLO.requisitos.split("\n"),EXEMPLO.diferencial,EXEMPLO.atividades.split("\n")],
+ ["Operador de Seccionadora",["Atenção, organização e responsabilidade;","Noções de medidas e leitura de plano de corte."],"Experiência com seccionadora ou serra de painéis.",
+  ["Operar a seccionadora no corte de chapas de MDF;","Seguir o plano de corte e conferir as medidas;","Separar e identificar as peças cortadas;","Fazer os apontamentos de produção;","Manter a máquina e o setor limpos e organizados."]],
+ ["Operador de Coladeira de Borda",["Atenção aos detalhes e responsabilidade;","Comprometimento com a qualidade e a segurança no trabalho."],"Experiência com coladeira de bordas.",
+  ["Operar a coladeira na aplicação de fitas de borda;","Ajustar cola, refilo e acabamento;","Conferir a qualidade da colagem e das peças;","Fazer os apontamentos de produção;","Seguir os procedimentos de segurança e organização do setor."]],
+ ["Operador de Furadeira",["Atenção, organização e responsabilidade;","Noções de medidas e leitura de desenho técnico."],"Experiência com furadeira múltipla ou CNC.",
+  ["Operar a furadeira na furação de peças em MDF;","Fazer o setup da máquina conforme o programa;","Conferir a posição e as medidas das furações;","Fazer os apontamentos de produção;","Seguir os procedimentos de segurança e organização do setor."]],
+ ["Operador de CNC",["Ensino médio completo;","Noções de desenho técnico e instrumentos de medição."],"Experiência com centro de usinagem CNC.",
+  ["Operar o centro de usinagem CNC;","Carregar os programas e fazer o setup da máquina;","Conferir as medidas e o acabamento das peças;","Fazer os apontamentos de produção;","Realizar a manutenção básica e a limpeza do equipamento."]],
+ ["Operador de Pintura",["Atenção aos detalhes e responsabilidade;","Comprometimento com a qualidade e a segurança no trabalho."],"Experiência com pintura de móveis ou peças em MDF.",
+  ["Preparar a superfície das peças para a pintura;","Preparar tintas e vernizes conforme o padrão;","Aplicar a pintura e conferir o acabamento;","Fazer os apontamentos de produção;","Usar os EPIs e manter a cabine limpa e organizada."]],
+ ["Auxiliar de Produção",["Disponibilidade para trabalhar em pé e em equipe;","Comprometimento, pontualidade e responsabilidade."],"Experiência em indústria moveleira.",
+  ["Alimentar as máquinas e retirar as peças;","Separar, identificar e movimentar materiais;","Conferir a qualidade das peças;","Manter o posto de trabalho limpo e organizado;","Seguir os procedimentos de segurança do setor."]],
+ ["Embalador",["Atenção aos detalhes e organização;","Comprometimento com a qualidade e a segurança no trabalho."],"Experiência com embalagem na indústria.",
+  ["Conferir as peças e ferragens de cada volume;","Embalar os produtos conforme o padrão;","Identificar e etiquetar as embalagens;","Fazer os apontamentos de produção;","Organizar os volumes para a expedição."]],
+ ["Líder de Produção",["Experiência na liderança de equipes na indústria;","Boa comunicação e organização."],"Experiência em indústria moveleira.",
+  ["Acompanhar a programação e o ritmo da produção;","Distribuir as atividades da equipe;","Garantir qualidade, segurança e organização do setor;","Acompanhar os apontamentos e tratar as paradas;","Treinar e orientar os colaboradores."]],
+ ["Inspetor de Qualidade",["Ensino médio completo;","Conhecimento em instrumentos de medição."],"Experiência com qualidade na indústria moveleira.",
+  ["Inspecionar peças e produtos durante a produção;","Conferir medidas, acabamento e montagem;","Registrar não conformidades e acompanhar as correções;","Orientar os operadores sobre o padrão de qualidade;","Apoiar a análise de reclamações de clientes."]],
+ ["Operador de Empilhadeira",["Curso de operador de empilhadeira (NR-11) válido;","Atenção e responsabilidade com a segurança."],"Experiência em armazém ou indústria.",
+  ["Movimentar chapas, peças e produtos acabados;","Abastecer os setores de produção;","Carregar e descarregar caminhões;","Fazer o check-list diário da empilhadeira;","Manter corredores e áreas de armazenagem organizados."]],
+ ["Auxiliar de Expedição",["Organização e atenção aos detalhes;","Disponibilidade para trabalhar em equipe."],"Experiência com carregamento de cargas.",
+  ["Separar os pedidos conforme a ordem de carregamento;","Conferir volumes, etiquetas e notas fiscais;","Carregar e descarregar caminhões;","Registrar as movimentações no sistema;","Manter a área de expedição limpa e organizada."]],
+ ["Conferente",["Ensino médio completo;","Organização e atenção aos detalhes."],"Experiência com conferência de cargas e uso de ERP.",
+  ["Conferir mercadorias no recebimento e na expedição;","Verificar quantidades, volumes e notas fiscais;","Registrar as movimentações no sistema;","Comunicar divergências e avarias;","Manter a área organizada e identificada."]],
+ ["Auxiliar de Almoxarifado",["Ensino médio completo;","Organização e noções de informática."],"Experiência com controle de estoque.",
+  ["Receber e conferir materiais e ferragens;","Armazenar e identificar os itens do estoque;","Separar e entregar materiais para a produção;","Registrar entradas e saídas no sistema;","Apoiar os inventários periódicos."]],
+ ["Mecânico de Manutenção",["Curso técnico ou profissionalizante em mecânica;","Experiência com manutenção de máquinas industriais."],"Conhecimento em pneumática, hidráulica e NR-12.",
+  ["Realizar manutenções preventivas e corretivas;","Diagnosticar falhas mecânicas, pneumáticas e hidráulicas;","Trocar peças e componentes desgastados;","Registrar as intervenções e o histórico das máquinas;","Seguir as normas de segurança e bloqueio de energia."]],
+ ["Eletricista de Manutenção",["Curso técnico ou profissionalizante em elétrica;","Curso NR-10 válido."],"Conhecimento em comandos elétricos, inversores e CLP.",
+  ["Realizar manutenções elétricas preventivas e corretivas;","Diagnosticar falhas em painéis e comandos das máquinas;","Instalar e manter motores, sensores e iluminação;","Registrar as intervenções realizadas;","Seguir as normas de segurança e bloqueio de energia."]],
+ ["Técnico de Segurança do Trabalho",["Curso técnico em Segurança do Trabalho;","Registro ativo no Ministério do Trabalho."],"Experiência em indústria e conhecimento da NR-12.",
+  ["Realizar inspeções de segurança nos setores;","Ministrar treinamentos e DDS;","Controlar a entrega e o uso de EPIs;","Investigar acidentes e propor melhorias;","Apoiar a CIPA e as rotinas de SST."]],
+ ["Assistente de PCP",["Ensino médio completo, cursando técnico ou superior;","Excel intermediário e organização."],"Experiência com PCP e ERP na indústria.",
+  ["Emitir e acompanhar as ordens de produção;","Conferir os apontamentos de produção no sistema;","Acompanhar o andamento dos pedidos e prazos;","Atualizar os controles e indicadores do setor;","Apoiar a programação da produção."]],
+ ["Analista de PCP",["Superior completo ou cursando em Engenharia ou Administração;","Excel avançado e experiência com ERP."],"Conhecimento em Power BI.",
+  ["Planejar e programar a produção conforme a demanda;","Analisar capacidade, carga máquina e gargalos;","Acompanhar o cumprimento do plano e as reprogramações;","Elaborar os indicadores de produção;","Integrar PCP, produção, comercial e expedição."]],
+ ["Auxiliar Administrativo",["Ensino médio completo;","Pacote Office e boa comunicação."],"Experiência com rotinas administrativas e ERP.",
+  ["Organizar documentos e arquivos;","Lançar informações no sistema;","Atender telefone e e-mails;","Apoiar as áreas nas rotinas administrativas;","Controlar planilhas e relatórios."]]
+];
+/* Sugestão por cargo. Ao digitar um cargo conhecido, preenche Requisitos, Diferencial e Atividades.
+   Fonte: o último anúncio salvo neste navegador para o cargo; sem ele, o modelo padrão acima.
+   Regra de segurança: só preenche sozinho se os campos estiverem vazios ou com um modelo da biblioteca.
+   Se houver texto digitado pela pessoa, apenas oferece o botão "Usar modelo". */
+const CHAVE_MOD="geradorVagas.modelos",MAX_MOD=80,CONTEUDO=["requisitos","diferencial","atividades"];
+const normCargo=s=>String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase()
+  .replace(/\((?:a|as|os)\)|\/as?\b/g,"").replace(/[^a-z0-9]+/g," ").trim();
+const PADRAO={};
+MODELOS.forEach(([cargo,r,d,a])=>{PADRAO[normCargo(cargo)]={cargo,requisitos:r.join("\n"),diferencial:d,atividades:a.join("\n")}});
+let meus=ler(CHAVE_MOD);if(!meus||typeof meus!=="object"||Array.isArray(meus))meus={};
+const assinatura=m=>CONTEUDO.map(k=>String((m&&m[k])||"").trim()).join("\u0001");
+const VAZIO=assinatura({});
 
 /* Estado */
 let E=Object.assign({},EXEMPLO,ler(CHAVE)||{});
@@ -497,6 +559,60 @@ function preencher(){
  CAMPOS.forEach(k=>{$(k).value=E[k]||""});
  document.querySelectorAll("#benef input").forEach(i=>{i.checked=E.beneficios.includes(i.value)});
 }
+
+/* Sugestão de conteúdo por cargo */
+let antes=null,estadoDica=null;
+function modeloDo(cargo){
+ const k=normCargo(cargo);if(!k)return null;
+ if(meus[k])return{...meus[k],fonte:"meu"};
+ return PADRAO[k]?{...PADRAO[k],fonte:"padrao"}:null;
+}
+function substituivel(){
+ const a=assinatura(E);if(a===VAZIO)return true;
+ return Object.values(PADRAO).concat(Object.values(meus)).some(m=>assinatura(m)===a);
+}
+function dica(estado,txt,rotulo,acao){
+ estadoDica=estado;const s=$("sug");
+ if(!estado){s.hidden=true;return}
+ $("sugTxt").textContent=txt;$("sugBt").textContent=rotulo;$("sugBt").onclick=acao;s.hidden=false;
+}
+function aplicaModelo(m){
+ antes=Object.fromEntries(CONTEUDO.map(k=>[k,E[k]||""]));
+ CONTEUDO.forEach(k=>{E[k]=m[k]||"";$(k).value=E[k]});
+ gravar(CHAVE,E);render();
+ dica("aplicado",m.fonte==="meu"?`Preenchido com o seu último anúncio de ${m.cargo}.`:`Preenchido com o modelo padrão de ${m.cargo}. Revise antes de publicar.`,"Desfazer",desfaz);
+}
+function oferece(m){
+ dica("oferta",`Há um modelo para ${m.cargo}. Usar o modelo troca o texto atual.`,"Usar modelo",()=>aplicaModelo(m));
+}
+function desfaz(){
+ if(antes){CONTEUDO.forEach(k=>{E[k]=antes[k];$(k).value=E[k]});antes=null;gravar(CHAVE,E);render()}
+ const m=modeloDo(E.cargo);if(m&&assinatura(m)!==assinatura(E))oferece(m);else dica(null);
+}
+function sugerir(){
+ const m=modeloDo(E.cargo);
+ if(!m){if(estadoDica==="oferta")dica(null);return}
+ if(assinatura(m)===assinatura(E))return;
+ if(substituivel())aplicaModelo(m);else oferece(m);
+}
+/* Ao salvar a arte, o texto vira o modelo do cargo neste navegador */
+function guardaModelo(){
+ const k=normCargo(E.cargo);if(!k||assinatura(E)===VAZIO)return;
+ const m={cargo:String(E.cargo).trim(),requisitos:E.requisitos||"",diferencial:E.diferencial||"",atividades:E.atividades||"",em:Date.now()};
+ if(PADRAO[k]&&assinatura(PADRAO[k])===assinatura(m)){if(!meus[k])return;delete meus[k]}
+ else meus[k]=m;
+ const ks=Object.keys(meus).sort((a,b)=>(meus[b].em||0)-(meus[a].em||0));
+ ks.slice(MAX_MOD).forEach(x=>delete meus[x]);
+ gravar(CHAVE_MOD,meus);listaCargos();
+}
+function listaCargos(){
+ const nomes=new Map();
+ Object.entries(meus).forEach(([k,m])=>nomes.set(k,m.cargo));
+ Object.entries(PADRAO).forEach(([k,m])=>{if(!nomes.has(k))nomes.set(k,m.cargo)});
+ $("cargos").replaceChildren(...[...nomes.values()].sort((a,b)=>a.localeCompare(b,"pt-BR")).map(c=>{
+  const o=document.createElement("option");o.value=c;return o}));
+}
+
 function montar(){
  $("benef").innerHTML="";
  BENEFICIOS.forEach(([id,txt])=>{
@@ -512,15 +628,18 @@ function montar(){
   b.onclick=()=>{formato=k;document.querySelectorAll(".aba").forEach(x=>x.setAttribute("aria-selected",x===b));$("msg").textContent="";render()};
   $("abas").append(b);
  });
- preencher();
- $("form").addEventListener("input",()=>{
+ preencher();listaCargos();
+ $("form").addEventListener("input",ev=>{
   CAMPOS.forEach(k=>{E[k]=$(k).value});
   E.beneficios=[...document.querySelectorAll("#benef input:checked")].map(i=>i.value);
+  if(ev.target.id==="cargo")sugerir();
+  else if(CONTEUDO.includes(ev.target.id)&&estadoDica==="aplicado"){antes=null;dica(null)}
   gravar(CHAVE,E);render();
  });
  $("form").addEventListener("submit",ev=>ev.preventDefault());
  $("novo").onclick=()=>{
   ["cargo","requisitos","diferencial","atividades","extras"].forEach(k=>{E[k]=""});
+  antes=null;dica(null);
   gravar(CHAVE,E);preencher();render();$("cargo").focus();
  };
  ligaArquivo("arqLogo","tiraLogo","geradorVagas.logo",LOGO_PADRAO,i=>{imgLogo=i});
@@ -558,6 +677,7 @@ async function baixar(){
  const bt=$("baixar"),msg=$("msg");msg.textContent="";
  const blob=ultimoBlob;
  if(!blob){msg.textContent="A arte ainda está sendo gerada. Tente de novo em instantes.";return}
+ guardaModelo();
  const nome=nomeArq();bt.disabled=true;
  try{
   if(window.claude&&window.claude.use){
