@@ -83,6 +83,13 @@ input[type=file]:focus-visible+.bt{outline:2px solid var(--acento)}
 .tela img{display:block;max-width:100%;max-height:calc(100vh - 230px);height:auto;box-shadow:0 1px 6px rgb(0 0 0/.2)}
 .aviso{background:var(--aviso-bg);color:var(--aviso-fg);padding:8px 10px;border-radius:6px;font-size:14px}
 .msg{min-height:20px;font-size:14px;color:var(--mudo)}
+.msg .bt.mini{margin-left:6px;border-color:var(--linha);color:var(--acento)}
+/* Botões de salvar: as 3 artes (principal), só a aba aberta e a legenda */
+.salvar{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px}
+.salvar .bt{min-height:46px}
+.salvar .bt:not(.pri){font-weight:500}
+.salvar .bt:disabled{opacity:.6;cursor:wait}
+@media (max-width:560px){.salvar{grid-template-columns:repeat(2,minmax(0,1fr))}.salvar .bt.pri{grid-column:1/-1}}
 .sug{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;background:var(--aviso-bg);color:var(--aviso-fg);padding:5px 6px 5px 10px;border-radius:6px;font-size:13px;line-height:1.3}
 .sug span{flex:1 1 220px}
 .bt.mini{padding:4px 10px;font-size:13px;border-color:currentColor;color:inherit;font-weight:700}
@@ -201,7 +208,11 @@ input[type=file]:focus-visible+.bt{outline:2px solid var(--acento)}
       <div class="abas" role="tablist" id="abas"></div>
       <div class="tela"><img id="prev" alt="Prévia da arte da vaga"></div>
       <div class="aviso" id="aviso" hidden></div>
-      <button type="button" class="bt pri" id="baixar">Baixar PNG</button>
+      <div class="salvar">
+        <button type="button" class="bt pri" id="baixar3">Salvar as 3 artes</button>
+        <button type="button" class="bt" id="baixar">Só Instagram</button>
+        <button type="button" class="bt" id="copiaLeg">Copiar legenda</button>
+      </div>
       <div class="msg" id="msg" role="status"></div>
     </section>
   </div>
@@ -215,6 +226,15 @@ input[type=file]:focus-visible+.bt{outline:2px solid var(--acento)}
     <ol id="passos"></ol>
     <p class="nota" id="dlgObs" hidden></p>
     <button type="button" class="bt pri" id="dlgOk" autofocus>Entendi</button>
+  </div>
+</dialog>
+
+<dialog id="dlgLeg" aria-labelledby="legTitulo">
+  <div class="dlg">
+    <h2 id="legTitulo">Legenda do post</h2>
+    <p class="nota">Este navegador não deixou copiar sozinho. Selecione o texto e copie (Ctrl+C, ou segure o dedo no celular).</p>
+    <textarea id="legTxt" rows="12" readonly></textarea>
+    <button type="button" class="bt pri" id="legFechar">Fechar</button>
   </div>
 </dialog>
 
@@ -301,7 +321,7 @@ const EXEMPLO={
 const CAMPOS=["cargo","local","chamada","requisitos","diferencial","atividades","extras","telefone","email"];
 const CHAVE="geradorVagas.v1";
 /* Versão do aplicativo: fonte única. Ao publicar mudança, aumente aqui; o sw.js renova o cache sozinho. */
-const VERSAO="1.4.1";
+const VERSAO="1.5.0";
 
 function ler(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
 function gravar(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
@@ -621,9 +641,9 @@ function render(){
 }
 /* Nome do arquivo = cargo como foi digitado + rede. Ex.: "Operador de Fresadora - Instagram.png".
    Tira só o que o Windows não aceita em nome de arquivo. */
-function nomeArq(){
+function nomeArq(k=formato){
  const cargo=String(E.cargo||"").normalize("NFC").replace(/[\\/:*?"<>|\u0000-\u001f]+/g," ").replace(/\s+/g," ").trim().slice(0,80).replace(/[. ]+$/,"");
- return `${cargo||"Vaga Patrimar"} - ${FORMATOS[formato].sufixo}.png`;
+ return `${cargo||"Vaga Patrimar"} - ${FORMATOS[k].sufixo}.png`;
 }
 
 /* Formulário */
@@ -996,7 +1016,7 @@ function montar(){
   b.setAttribute("aria-selected",k===formato);
   b.append(document.createTextNode(f.nome));
   const s=document.createElement("small");s.textContent=f.tam;b.append(s);
-  b.onclick=()=>{formato=k;document.querySelectorAll(".aba").forEach(x=>x.setAttribute("aria-selected",x===b));$("msg").textContent="";render()};
+  b.onclick=()=>{formato=k;document.querySelectorAll(".aba").forEach(x=>x.setAttribute("aria-selected",x===b));$("msg").textContent="";rotulos();render()};
   $("abas").append(b);
  });
  combo.ligar();preencher();listaCargos();
@@ -1016,6 +1036,9 @@ function montar(){
  ligaArquivo("arqLogo","tiraLogo","geradorVagas.logo",LOGO_PADRAO,i=>{imgLogo=i});
  ligaArquivo("arqFoto","tiraFoto","geradorVagas.foto",FOTO_PADRAO,i=>{imgFoto=i});
  $("baixar").onclick=baixar;
+ $("baixar3").onclick=()=>baixarTodas(false);
+ $("copiaLeg").onclick=copiaLegenda;
+ $("legFechar").onclick=()=>{const d=$("dlgLeg");if(typeof d.close==="function")d.close();else d.removeAttribute("open")};
 }
 function carrega(src){return new Promise((ok,er)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=er;i.src=src})}
 function ligaArquivo(idArq,idTira,chave,padrao,poe){
@@ -1079,6 +1102,126 @@ async function baixar(){
  }finally{bt.disabled=false}
 }
 
+/* Rótulos dos botões de salvar conforme o aparelho e a aba aberta */
+const toque=()=>{try{return matchMedia("(pointer:coarse)").matches}catch(e){return false}};
+function compartilhaVarios(arqs){try{return toque()&&!!navigator.canShare&&navigator.canShare({files:arqs})}catch(e){return false}}
+function usaPasta(){try{return !(window.claude&&window.claude.use)&&!toque()&&typeof window.showDirectoryPicker==="function"&&window.self===window.top}catch(e){return false}}
+function rotulos(){
+ $("baixar").textContent="Só "+FORMATOS[formato].nome;
+ const t=()=>new File(["x"],"t.png",{type:"image/png"});
+ $("baixar3").textContent=compartilhaVarios([t(),t(),t()])?"Compartilhar as 3 artes":usaPasta()?"Salvar as 3 artes":"Baixar as 3 artes";
+}
+
+/* Salvar as 3 artes de uma vez.
+   Computador (Chrome/Edge), app instalado: na primeira vez escolhe uma pasta (ex.: "Vagas"); depois salva direto nela.
+   Numa aba do navegador, pergunta a pasta a cada vez (abre na última usada): a pasta só fica guardada no app instalado,
+   que sempre roda num perfil normal do navegador (no modo anônimo, ler a pasta guardada pode derrubar o navegador).
+   O navegador não deixa usar a raiz de Downloads, Documentos ou Área de Trabalho: crie uma pasta dentro delas.
+   Celular: abre o compartilhar com as 3 imagens. Outros navegadores: baixa os 3 arquivos. */
+const lembraPasta=()=>{try{return["standalone","window-controls-overlay"].some(m=>matchMedia(`(display-mode: ${m})`).matches)}catch(e){return false}};
+const pastaDB=(()=>{
+ const abrir=()=>new Promise((ok,er)=>{const r=indexedDB.open("geradorVagas",1);
+  r.onupgradeneeded=()=>r.result.createObjectStore("kv");r.onsuccess=()=>ok(r.result);r.onerror=()=>er(r.error)});
+ async function op(modo,fn){const db=await abrir();return new Promise((ok,er)=>{const t=db.transaction("kv",modo),r=fn(t.objectStore("kv"));
+  t.oncomplete=()=>{db.close();ok(r.result)};t.onerror=t.onabort=()=>{db.close();er(t.error)}})}
+ return{ler:()=>op("readonly",s=>s.get("pasta")).catch(()=>null),
+  gravar:h=>op("readwrite",s=>s.put(h,"pasta")).catch(()=>{}),
+  apagar:()=>op("readwrite",s=>s.delete("pasta")).catch(()=>{})};
+})();
+async function pastaParaSalvar(trocar){
+ const h=trocar||!lembraPasta()?null:await pastaDB.ler();
+ if(h){try{let p=await h.queryPermission({mode:"readwrite"});if(p!=="granted")p=await h.requestPermission({mode:"readwrite"});if(p==="granted")return h}catch(e){}}
+ const nova=await window.showDirectoryPicker({id:"vagas-patrimar",mode:"readwrite",startIn:"pictures"});
+ if(lembraPasta())await pastaDB.gravar(nova);return nova;
+}
+/* As 3 artes ficam guardadas enquanto nada mudar: um segundo clique (ex.: depois de um cancelamento) é imediato */
+let artes3=null;
+function chaveArtes(){return JSON.stringify(E)+"|"+(imgFoto?imgFoto.src.length:0)+"|"+(imgLogo?imgLogo.src.length:0)}
+async function geraArtes(){
+ const ch=chaveArtes();if(artes3&&artes3.ch===ch)return artes3;
+ const ks=Object.keys(FORMATOS),apertou=[];
+ const blobs=await Promise.all(ks.map(k=>{
+  const f=FORMATOS[k],cv=document.createElement("canvas");cv.width=f.W;cv.height=f.H;
+  if(desenha(cv.getContext("2d"),E,f).apertou)apertou.push(f.nome);
+  return new Promise((ok,er)=>cv.toBlob(b=>b?ok(b):er(new Error("toBlob")),"image/png"));
+ }));
+ artes3={ch,apertou,arqs:blobs.map((b,i)=>new File([b],nomeArq(ks[i]),{type:"image/png"}))};
+ return artes3;
+}
+async function baixarTodas(trocar){
+ const bt=$("baixar3"),msg=$("msg");msg.textContent="";
+ guardaModelo();bt.disabled=true;
+ let pasta=null;
+ try{
+  /* A janela de pasta precisa abrir logo após o clique: escolhe o destino antes de desenhar */
+  if(usaPasta()){
+   if(!lembraPasta())msg.textContent="Escolha a pasta para as 3 artes.";
+   else if(trocar||!(await pastaDB.ler()))msg.textContent="Escolha ou crie uma pasta para as artes, por exemplo Vagas. As próximas vão direto para ela.";
+   pasta=await pastaParaSalvar(trocar);msg.textContent=""}
+  const{arqs,apertou}=await geraArtes();
+  const aviso=apertou.length?` Atenção: o texto não coube em ${apertou.join(" e ")}; confira ${apertou.length>1?"essas artes":"essa arte"}.`:"";
+  if(window.claude&&window.claude.use){
+   const d=await window.claude.use("downloads");
+   if(!d){msg.textContent="Para salvar, clique com o botão direito em cada arte, ou segure o dedo sobre ela no celular.";return}
+   for(const a of arqs)await d.save({filename:a.name,data:a});
+   msg.textContent="3 artes salvas."+aviso;
+  }else if(pasta){
+   for(const a of arqs){const fh=await pasta.getFileHandle(a.name,{create:true}),w=await fh.createWritable();await w.write(a);await w.close()}
+   msg.textContent=`3 artes salvas na pasta ${pasta.name}.${aviso}`;
+   if(lembraPasta()){const tb=document.createElement("button");tb.type="button";tb.className="bt mini";tb.textContent="Trocar pasta";tb.onclick=()=>baixarTodas(true);msg.append(tb)}
+  }else if(compartilhaVarios(arqs)){
+   await navigator.share({files:arqs});msg.textContent="Artes prontas."+aviso;
+  }else{
+   for(const a of arqs){const l=document.createElement("a");l.href=URL.createObjectURL(a);l.download=a.name;l.click();
+    setTimeout(()=>URL.revokeObjectURL(l.href),4000);await new Promise(r=>setTimeout(r,250))}
+   msg.textContent="3 artes baixadas. Se o navegador perguntar, permita baixar vários arquivos."+aviso;
+  }
+ }catch(e){
+  const n=e&&e.name;
+  if(n==="AbortError"||(e&&e.code==="declined"))msg.textContent="Salvamento cancelado.";
+  else if(n==="NotFoundError"&&pasta){await pastaDB.apagar();msg.textContent=`A pasta ${pasta.name} não foi encontrada. Clique de novo para escolher outra.`}
+  else if(n==="SecurityError"&&usaPasta())msg.textContent="O navegador pediu um novo clique para abrir a pasta. Clique de novo em "+bt.textContent+".";
+  else if(n==="NotAllowedError")msg.textContent="O navegador pediu um novo toque. Clique de novo em "+bt.textContent+".";
+  else if(e&&e.code==="rate_limited")msg.textContent="Já existe uma confirmação aberta. Responda a ela e tente de novo.";
+  else msg.textContent="Não foi possível salvar as 3 artes. Use o botão de uma arte por vez.";
+ }finally{bt.disabled=false}
+}
+
+/* Legenda do post, montada com o que está preenchido.
+   Hashtags: as fixas (edite HASHTAGS) + a do cargo (#operadordecnc) + a da cidade (#vagasjaci), geradas dos campos. */
+const HASHTAGS="#vagas #emprego #vagasdeemprego #trabalheconosco #industriamoveleira #patrimarmoveis";
+function hashtags(){
+ const tag=t=>t.replace(/ /g,"");
+ const cargo=normCargo(E.cargo).split(" ").filter(p=>p&&!/^(i|ii|iii|iv|1|2|3|jr|junior|pl|pleno|sr|senior|turno|noturno|diurno|temporario|pcd)$/.test(p)).join(" ");
+ const cid=normCargo(String(E.local||"").split(/\s[-–\/]\s|,/)[0]);
+ const extra=[cargo&&"#"+tag(cargo),cid&&"#vagas"+tag(cid)].filter(Boolean);
+ return[...new Set(HASHTAGS.split(" ").concat(extra))].join(" ");
+}
+function legenda(){
+ const l=[],sem=t=>t.replace(/[;.]\s*$/,"");
+ const cargo=String(E.cargo||"").trim(),local=String(E.local||"").trim();
+ l.push(`${String(E.chamada||"").trim()||"Vaga"}: ${cargo||"cargo"}!`);
+ if(local)l.push(`📍 ${local}`);
+ const bloco=(t,xs)=>{if(xs.length)l.push("",t,...xs.map(x=>"• "+sem(x)))};
+ bloco("Requisitos:",itens(E.requisitos));
+ bloco("Diferencial:",itens(E.diferencial));
+ bloco("Principais atividades:",itens(E.atividades));
+ bloco("Benefícios:",BENEFICIOS.filter(b=>E.beneficios.includes(b[0])).map(b=>b[1]).concat(itens(E.extras)));
+ const tel=String(E.telefone||"").trim(),mail=String(E.email||"").trim();
+ if(tel||mail)l.push("",`📲 Interessados: ${[tel&&`chame no WhatsApp ${tel}`,mail&&`envie o currículo para ${mail}`].filter(Boolean).join(" ou ")}.`);
+ l.push("",hashtags());
+ return l.join("\n");
+}
+async function copiaLegenda(){
+ const t=legenda(),msg=$("msg");
+ try{await navigator.clipboard.writeText(t);msg.textContent="Legenda copiada. É só colar no post."}
+ catch(e){/* sem acesso à área de transferência: mostra o texto para copiar à mão */
+  const d=$("dlgLeg"),ta=$("legTxt");ta.value=t;
+  if(typeof d.showModal==="function"){if(!d.open)d.showModal()}else d.setAttribute("open","");
+  ta.focus();ta.select();msg.textContent="";
+ }
+}
+
 /* Instalar como aplicativo: usa o pedido nativo do navegador quando existe; senão, mostra o passo a passo do aparelho */
 const instalacao=(()=>{
  const ua=navigator.userAgent;
@@ -1134,8 +1277,7 @@ if("serviceWorker" in navigator&&window.isSecureContext)navigator.serviceWorker.
  montar();
  ia.ligar();
  modelosArq.ligar();
- if(compartilha(new File(["x"],"t.png",{type:"image/png"})))$("baixar").textContent="Compartilhar ou salvar PNG";
- else if(salvaComo())$("baixar").textContent="Salvar PNG";
+ rotulos();
  const salvaL=ler("geradorVagas.logo"),salvaF=ler("geradorVagas.foto");
  if(salvaL)$("tiraLogo").hidden=false;if(salvaF)$("tiraFoto").hidden=false;
  [imgLogo,imgFoto]=await Promise.all([carrega(salvaL||LOGO_PADRAO),carrega(salvaF||FOTO_PADRAO)]);
