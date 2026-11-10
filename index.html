@@ -321,7 +321,7 @@ const EXEMPLO={
 const CAMPOS=["cargo","local","chamada","requisitos","diferencial","atividades","extras","telefone","email"];
 const CHAVE="geradorVagas.v1";
 /* Versão do aplicativo: fonte única. Ao publicar mudança, aumente aqui; o sw.js renova o cache sozinho. */
-const VERSAO="1.5.0";
+const VERSAO="1.5.1";
 
 function ler(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
 function gravar(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
@@ -641,10 +641,13 @@ function render(){
 }
 /* Nome do arquivo = cargo como foi digitado + rede. Ex.: "Operador de Fresadora - Instagram.png".
    Tira só o que o Windows não aceita em nome de arquivo. */
-function nomeArq(k=formato){
+function nomeVaga(){
  const cargo=String(E.cargo||"").normalize("NFC").replace(/[\\/:*?"<>|\u0000-\u001f]+/g," ").replace(/\s+/g," ").trim().slice(0,80).replace(/[. ]+$/,"");
- return `${cargo||"Vaga Patrimar"} - ${FORMATOS[k].sufixo}.png`;
+ return cargo||"Vaga Patrimar";
 }
+function nomeArq(k=formato){return `${nomeVaga()} - ${FORMATOS[k].sufixo}.png`}
+/* Pasta da vaga (Salvar as 3 artes): o nome do cargo; nomes reservados do Windows (CON, AUX, NUL...) ganham " (vaga)" */
+const nomePastaVaga=()=>{const n=nomeVaga();return/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(n)?n+" (vaga)":n};
 
 /* Formulário */
 function preencher(){
@@ -1166,8 +1169,10 @@ async function baixarTodas(trocar){
    for(const a of arqs)await d.save({filename:a.name,data:a});
    msg.textContent="3 artes salvas."+aviso;
   }else if(pasta){
-   for(const a of arqs){const fh=await pasta.getFileHandle(a.name,{create:true}),w=await fh.createWritable();await w.write(a);await w.close()}
-   msg.textContent=`3 artes salvas na pasta ${pasta.name}.${aviso}`;
+   /* Cada vaga na sua pasta: Vagas > Operador de CNC. Salvar de novo a mesma vaga substitui os arquivos. */
+   const sub=await pasta.getDirectoryHandle(nomePastaVaga(),{create:true});
+   for(const a of arqs){const fh=await sub.getFileHandle(a.name,{create:true}),w=await fh.createWritable();await w.write(a);await w.close()}
+   msg.textContent=`3 artes salvas em ${pasta.name} › ${sub.name}.${aviso}`;
    if(lembraPasta()){const tb=document.createElement("button");tb.type="button";tb.className="bt mini";tb.textContent="Trocar pasta";tb.onclick=()=>baixarTodas(true);msg.append(tb)}
   }else if(compartilhaVarios(arqs)){
    await navigator.share({files:arqs});msg.textContent="Artes prontas."+aviso;

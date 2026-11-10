@@ -20,7 +20,8 @@ Use o botão **Instalar aplicativo**, no topo da tela.
 ## Salvar a arte
 Cada arquivo sai com o nome da vaga e a rede, por exemplo `Operador de Fresadora - Instagram.png`. Salvar de novo a mesma vaga na mesma pasta substitui o arquivo.
 - **Salvar as 3 artes** (botão principal): gera Instagram, LinkedIn e status do WhatsApp de uma vez.
-  - Computador (Chrome e Edge), **app instalado**: na primeira vez, escolha ou crie uma pasta (ex.: `Vagas`). As próximas vão direto para ela, sem perguntar; **Trocar pasta** aparece na mensagem. O navegador pode pedir permissão para editar a pasta; escolha "Permitir em todas as visitas".
+  - Computador (Chrome e Edge), **app instalado**: na primeira vez, escolha ou crie uma pasta (ex.: `Vagas`). As próximas vão direto para ela, sem perguntar; **Trocar pasta** aparece na mensagem.
+  - Cada vaga ganha uma pasta com o nome do cargo dentro da pasta escolhida: `Vagas › Operador de CNC › Operador de CNC - Instagram.png`. Salvar de novo a mesma vaga substitui os arquivos dela. Vale também na aba do navegador. No celular e no download comum não há pasta da vaga. O navegador pode pedir permissão para editar a pasta; escolha "Permitir em todas as visitas".
   - O navegador não aceita a raiz de Downloads, Documentos ou Área de Trabalho: crie uma pasta dentro delas.
   - Computador, **aba do navegador**: pergunta a pasta a cada vez, já abrindo na última usada. A pasta só fica guardada no app instalado, que sempre roda num perfil normal do navegador.
   - Celular: abre o compartilhar com as 3 imagens (Salvar imagens, WhatsApp, Drive).
@@ -65,6 +66,7 @@ A versão fica em um lugar só: a constante `VERSAO`, no `index.html`. Ela apare
 Ao publicar uma mudança, aumente a versão (ex.: `1.1.0` → `1.2.0`). O `sw.js` lê esse número e renova a cópia offline sozinho. Não é preciso editar o `sw.js`.
 
 ### Histórico
+- **1.5.1**: Salvar as 3 artes cria uma pasta com o nome da vaga dentro da pasta escolhida.
 - **1.5.0**: botão Salvar as 3 artes (pasta lembrada no app instalado; compartilhar as 3 no celular); botão Copiar legenda com hashtags geradas do cargo e da cidade; aviso de texto que não coube em algum formato.
 - **1.4.1**: a lista de cargos mostra todos ao clicar no campo, mesmo com um cargo já preenchido (antes era preciso apagar o campo).
 - **1.4.0**: busca de cargo tolerante (feminino, plural, nível, turno, sinônimos e erro de digitação) e oferta do modelo mais parecido; botão Modelos salvos para exportar e importar os modelos aprendidos entre computadores.
