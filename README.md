@@ -18,9 +18,17 @@ Use o botão **Instalar aplicativo**, no topo da tela.
 - O botão some quando o app já está aberto instalado.
 
 ## Salvar a arte
-O arquivo sai com o nome da vaga e a rede, por exemplo `Operador de Fresadora - Instagram.png`.
-No Chrome e no Edge do computador, abre a janela "Salvar como" com esse nome já preenchido. O navegador lembra a última pasta usada.
-No celular, abre o compartilhar do aparelho (WhatsApp, Instagram, Salvar imagem).
+Cada arquivo sai com o nome da vaga e a rede, por exemplo `Operador de Fresadora - Instagram.png`. Salvar de novo a mesma vaga na mesma pasta substitui o arquivo.
+- **Salvar as 3 artes** (botão principal): gera Instagram, LinkedIn e status do WhatsApp de uma vez.
+  - Computador (Chrome e Edge), **app instalado**: na primeira vez, escolha ou crie uma pasta (ex.: `Vagas`). As próximas vão direto para ela, sem perguntar; **Trocar pasta** aparece na mensagem. O navegador pode pedir permissão para editar a pasta; escolha "Permitir em todas as visitas".
+  - O navegador não aceita a raiz de Downloads, Documentos ou Área de Trabalho: crie uma pasta dentro delas.
+  - Computador, **aba do navegador**: pergunta a pasta a cada vez, já abrindo na última usada. A pasta só fica guardada no app instalado, que sempre roda num perfil normal do navegador.
+  - Celular: abre o compartilhar com as 3 imagens (Salvar imagens, WhatsApp, Drive).
+  - Outros navegadores: baixa os 3 arquivos (o navegador pode pedir para permitir vários downloads).
+  - Se o texto não couber em algum formato, a mensagem avisa qual conferir.
+- **Só Instagram / Só LinkedIn / Só WhatsApp**: salva apenas a arte da aba aberta, como antes (janela "Salvar como" no computador; compartilhar no celular).
+- **Copiar legenda**: copia o texto do post, montado com os campos preenchidos (chamada e cargo, cidade, requisitos, diferencial, atividades, benefícios e contato) e hashtags. É só colar no Instagram, LinkedIn ou WhatsApp. Se o navegador não deixar copiar sozinho, abre uma janela com o texto selecionado.
+  - Hashtags: as fixas da constante `HASHTAGS` no `index.html` (`#vagas #emprego #vagasdeemprego #trabalheconosco #industriamoveleira #patrimarmoveis`), mais a do cargo (`#operadordecnc`, sem nível nem turno) e a da cidade (`#vagasjaci`), geradas dos campos.
 
 ## Sugestão de conteúdo por cargo
 Ao digitar o **Cargo**, o app preenche Requisitos, Diferencial e Principais atividades.
@@ -57,6 +65,7 @@ A versão fica em um lugar só: a constante `VERSAO`, no `index.html`. Ela apare
 Ao publicar uma mudança, aumente a versão (ex.: `1.1.0` → `1.2.0`). O `sw.js` lê esse número e renova a cópia offline sozinho. Não é preciso editar o `sw.js`.
 
 ### Histórico
+- **1.5.0**: botão Salvar as 3 artes (pasta lembrada no app instalado; compartilhar as 3 no celular); botão Copiar legenda com hashtags geradas do cargo e da cidade; aviso de texto que não coube em algum formato.
 - **1.4.1**: a lista de cargos mostra todos ao clicar no campo, mesmo com um cargo já preenchido (antes era preciso apagar o campo).
 - **1.4.0**: busca de cargo tolerante (feminino, plural, nível, turno, sinônimos e erro de digitação) e oferta do modelo mais parecido; botão Modelos salvos para exportar e importar os modelos aprendidos entre computadores.
 - **1.3.0**: botão Configurar IA para guardar a chave da API do Claude neste navegador; botão Gerar com IA, que escreve Requisitos, Diferencial e Principais atividades a partir do cargo.
