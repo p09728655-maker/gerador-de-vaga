@@ -95,6 +95,17 @@ input[type=file]:focus-visible+.bt{outline:2px solid var(--acento)}
 .ia-msg:empty{display:none}
 .dlg-bts{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between}
 .acoes-bts{display:flex;flex-wrap:wrap;gap:8px}
+/* Lista de cargos (campo Cargo) */
+.campo{display:grid;gap:4px;min-width:0}
+.combo{position:relative;min-width:0}
+.combo input[type=text]{padding-right:36px}
+.combo-bt{position:absolute;top:1px;right:1px;bottom:1px;width:34px;display:flex;align-items:center;justify-content:center;border:0;border-radius:0 6px 6px 0;background:transparent;color:var(--mudo);cursor:pointer}
+.combo-bt:hover{color:var(--acento)}
+.combo-lista{position:absolute;left:0;top:calc(100% + 4px);z-index:20;min-width:100%;width:max-content;max-width:min(420px,calc(100vw - 32px));max-height:min(300px,50vh);overflow:auto;margin:0;padding:4px;list-style:none;background:var(--sup);border:1px solid var(--linha);border-radius:8px;box-shadow:0 8px 24px rgb(0 0 0/.18)}
+.combo-lista li{padding:8px 10px;border-radius:6px;cursor:pointer;font-size:15px;line-height:1.3}
+.combo-lista li.atual{font-weight:700}
+.combo-lista li[aria-selected=true]{background:var(--acento);color:var(--sobre)}
+@media (pointer:coarse){.combo-lista li{padding:11px 10px}}
 /* Computador: tela única, sem rolagem. Formulário em 2 colunas + prévia; os textos crescem para ocupar a altura.
    Se a janela for baixa demais, só a coluna que não couber rola, nunca a página. */
 @media (min-width:1120px) and (min-height:560px){
@@ -141,8 +152,13 @@ input[type=file]:focus-visible+.bt{outline:2px solid var(--acento)}
       <fieldset>
         <legend>Vaga</legend>
         <div class="duas">
-          <label>Cargo<input type="text" id="cargo" maxlength="60" list="cargos"></label>
-          <datalist id="cargos"></datalist>
+          <div class="campo"><label for="cargo">Cargo</label>
+            <div class="combo">
+              <input type="text" id="cargo" maxlength="60" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="cargosLista">
+              <button type="button" class="combo-bt" id="cargoBt" tabindex="-1" aria-label="Mostrar todos os cargos"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              <ul class="combo-lista" id="cargosLista" role="listbox" aria-label="Cargos" hidden></ul>
+            </div>
+          </div>
           <label>Cidade e estado<input type="text" id="local" maxlength="30"></label>
         </div>
         <label>Chamada<input type="text" id="chamada" maxlength="40"></label>
@@ -285,7 +301,7 @@ const EXEMPLO={
 const CAMPOS=["cargo","local","chamada","requisitos","diferencial","atividades","extras","telefone","email"];
 const CHAVE="geradorVagas.v1";
 /* Versão do aplicativo: fonte única. Ao publicar mudança, aumente aqui; o sw.js renova o cache sozinho. */
-const VERSAO="1.4.0";
+const VERSAO="1.4.1";
 
 function ler(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
 function gravar(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
@@ -697,13 +713,79 @@ function guardaModelo(){
  ks.slice(MAX_MOD).forEach(x=>delete meus[x]);
  gravar(CHAVE_MOD,meus);listaCargos();
 }
+let CARGOS=[];
 function listaCargos(){
  const nomes=new Map();
  Object.entries(meus).forEach(([k,m])=>nomes.set(k,m.cargo));
  Object.entries(PADRAO).forEach(([k,m])=>{if(!nomes.has(k))nomes.set(k,m.cargo)});
- $("cargos").replaceChildren(...[...nomes.values()].sort((a,b)=>a.localeCompare(b,"pt-BR")).map(c=>{
-  const o=document.createElement("option");o.value=c;return o}));
+ CARGOS=[...nomes.values()].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+ combo.atualiza();
 }
+/* Lista de cargos. Substitui o datalist do navegador, que só mostra os cargos que batem com o texto já digitado
+   (com "Analista de PCP" no campo, só aparecia ele). Clicar no campo ou na seta mostra todos, com o atual marcado;
+   digitar filtra pelo começo de cada palavra ("op cnc" acha Operador de CNC). Escolher dispara a sugestão de conteúdo. */
+const combo=(()=>{
+ let aberto=false,filtro="",vis=[],ativo=-1,escolhendo=false;
+ const inp=()=>$("cargo"),ul=()=>$("cargosLista");
+ const casa=(c,txt)=>{const t=normCargo(txt).split(" ").filter(Boolean);if(!t.length)return true;
+  const w=normCargo(c).split(" ");return t.every(x=>w.some(y=>y.startsWith(x)))};
+ function rola(li,centro){
+  const u=ul();
+  if(centro)u.scrollTop=li.offsetTop-(u.clientHeight-li.offsetHeight)/2;
+  else if(li.offsetTop<u.scrollTop)u.scrollTop=li.offsetTop;
+  else if(li.offsetTop+li.offsetHeight>u.scrollTop+u.clientHeight)u.scrollTop=li.offsetTop+li.offsetHeight-u.clientHeight;
+ }
+ function marca(i,centro){
+  ativo=i;const lis=ul().children;
+  for(let k=0;k<lis.length;k++)lis[k].setAttribute("aria-selected",String(k===i));
+  if(i>=0){inp().setAttribute("aria-activedescendant",lis[i].id);rola(lis[i],centro)}
+  else inp().removeAttribute("aria-activedescendant");
+ }
+ function fecha(){
+  aberto=false;ativo=-1;ul().hidden=true;
+  inp().setAttribute("aria-expanded","false");inp().removeAttribute("aria-activedescendant");
+ }
+ /* f vazio: todos os cargos. f com texto: só os que batem; se sobrar só o próprio texto, não há o que escolher. */
+ function abre(f){
+  filtro=f;vis=CARGOS.filter(c=>casa(c,f));
+  const atual=normCargo(inp().value);
+  if(!vis.length||(f&&vis.length===1&&normCargo(vis[0])===atual)){fecha();return}
+  ul().replaceChildren(...vis.map((c,i)=>{const li=document.createElement("li");
+   li.id="cargoOp"+i;li.setAttribute("role","option");li.textContent=c;
+   if(normCargo(c)===atual)li.className="atual";return li}));
+  ul().hidden=false;aberto=true;inp().setAttribute("aria-expanded","true");
+  marca(f?-1:vis.findIndex(c=>normCargo(c)===atual),true);
+ }
+ function escolhe(i){
+  const c=vis[i];if(c==null)return;
+  fecha();const el=inp();el.value=c;
+  escolhendo=true;el.dispatchEvent(new Event("input",{bubbles:true}));escolhendo=false;
+  el.focus();el.setSelectionRange(c.length,c.length);
+ }
+ return{
+  atualiza(){if(aberto)abre(filtro)},
+  ligar(){
+   const el=inp(),u=ul(),bt=$("cargoBt");
+   el.addEventListener("click",()=>abre(""));
+   el.addEventListener("input",()=>{if(!escolhendo)abre(el.value)});
+   el.addEventListener("keydown",e=>{
+    if(e.key==="ArrowDown"||e.key==="ArrowUp"){
+     e.preventDefault();if(!aberto){abre("");return}
+     const n=vis.length;let i=ativo+(e.key==="ArrowDown"?1:-1);if(i<0)i=n-1;if(i>=n)i=0;marca(i);
+    }else if(e.key==="Enter"&&aberto){e.preventDefault();if(ativo>=0)escolhe(ativo);else fecha()}
+    else if(e.key==="Escape"&&aberto){e.preventDefault();fecha()}
+    else if(e.key==="Tab")fecha();
+   });
+   el.addEventListener("blur",fecha);
+   /* mousedown sem ação: o foco fica no campo e a lista não fecha antes do clique */
+   u.addEventListener("mousedown",e=>e.preventDefault());
+   u.addEventListener("click",e=>{const li=e.target.closest("li");if(li)escolhe([...u.children].indexOf(li))});
+   u.addEventListener("mousemove",e=>{const li=e.target.closest("li");if(li){const i=[...u.children].indexOf(li);if(i!==ativo)marca(i)}});
+   bt.addEventListener("mousedown",e=>e.preventDefault());
+   bt.addEventListener("click",()=>{if(aberto)fecha();else{el.focus();abre("")}});
+  }
+ };
+})();
 
 /* Modelos salvos: leva os modelos aprendidos de um computador para outro, por arquivo .json.
    Na importação, cargo novo entra; cargo que já existe fica com o texto salvo por último (campo "em"). */
@@ -917,7 +999,7 @@ function montar(){
   b.onclick=()=>{formato=k;document.querySelectorAll(".aba").forEach(x=>x.setAttribute("aria-selected",x===b));$("msg").textContent="";render()};
   $("abas").append(b);
  });
- preencher();listaCargos();
+ combo.ligar();preencher();listaCargos();
  $("form").addEventListener("input",ev=>{
   CAMPOS.forEach(k=>{E[k]=$(k).value});
   E.beneficios=[...document.querySelectorAll("#benef input:checked")].map(i=>i.value);
