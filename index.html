@@ -177,7 +177,7 @@ input[type=file]:focus-visible+.bt{outline:2px solid var(--acento)}
           <div class="arq"><input type="file" id="arqFoto" accept="image/*"><label class="bt" for="arqFoto">Enviar foto do topo</label><button type="button" class="bt" id="tiraFoto" hidden>Voltar à foto padrão</button></div>
         </div>
       </fieldset>
-      <div class="acoes"><div class="acoes-bts"><button type="button" class="bt" id="novo">Nova vaga em branco</button><button type="button" class="bt" id="cfgIA">Configurar IA</button></div><span class="versao" id="versao"></span></div>
+      <div class="acoes"><div class="acoes-bts"><button type="button" class="bt" id="novo">Nova vaga em branco</button><button type="button" class="bt" id="cfgIA">Configurar IA</button><button type="button" class="bt" id="abreMod">Modelos salvos</button></div><span class="versao" id="versao"></span></div>
      </div>
     </form>
 
@@ -199,6 +199,17 @@ input[type=file]:focus-visible+.bt{outline:2px solid var(--acento)}
     <ol id="passos"></ol>
     <p class="nota" id="dlgObs" hidden></p>
     <button type="button" class="bt pri" id="dlgOk" autofocus>Entendi</button>
+  </div>
+</dialog>
+
+<dialog id="dlgMod" aria-labelledby="modTitulo">
+  <div class="dlg">
+    <h2 id="modTitulo">Modelos salvos</h2>
+    <p class="nota" id="modResumo"></p>
+    <p class="nota">Para ter os mesmos modelos em outro computador: exporte aqui e use <b>Importar arquivo</b> lá. A importação junta os modelos; quando o mesmo cargo existe nos dois, fica o texto salvo por último.</p>
+    <p class="msg" id="modMsg" role="status"></p>
+    <button type="button" class="bt pri" id="modExportar">Exportar arquivo</button>
+    <div class="dlg-bts"><div class="arq"><input type="file" id="modArq" accept=".json,application/json"><label class="bt" for="modArq">Importar arquivo</label></div><button type="button" class="bt" id="modFechar">Fechar</button></div>
   </div>
 </dialog>
 
@@ -274,7 +285,7 @@ const EXEMPLO={
 const CAMPOS=["cargo","local","chamada","requisitos","diferencial","atividades","extras","telefone","email"];
 const CHAVE="geradorVagas.v1";
 /* Versão do aplicativo: fonte única. Ao publicar mudança, aumente aqui; o sw.js renova o cache sozinho. */
-const VERSAO="1.3.0";
+const VERSAO="1.4.0";
 
 function ler(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
 function gravar(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
@@ -330,6 +341,28 @@ const MODELOS=[
 const CHAVE_MOD="geradorVagas.modelos",MAX_MOD=80,CONTEUDO=["requisitos","diferencial","atividades"];
 const normCargo=s=>String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase()
   .replace(/\((?:a|as|os)\)|\/as?\b/g,"").replace(/[^a-z0-9]+/g," ").trim();
+/* Busca tolerante: reduz o cargo a palavras-chave para achar o modelo mesmo com variações de escrita.
+   Ex.: "Operadora CNC II" e "Op. de CNC" viram "cnc operador"; "Ajudante de Produção" acha "Auxiliar de Produção".
+   Tira: artigos e preposições, nível (I, II, Jr, Pleno...), turno, plural e feminino. Para incluir sinônimo, edite SINONIMOS. */
+const PALAVRAS_FORA=new Set("a o as os e de da do das dos em na no para com i ii iii iv 1 2 3 jr junior pl pleno sr senior turno noturno diurno temporario pcd".split(" "));
+const SINONIMOS={ajudante:"auxiliar",aux:"auxiliar",op:"operador",oper:"operador",tec:"tecnico",mec:"mecanico"};
+function raiz(p){
+ if(p.length>4){if(/[rlz]es$/.test(p))p=p.slice(0,-2);else if(/[^s]s$/.test(p))p=p.slice(0,-1)}
+ p=p.replace(/([dts])ora$/,"$1or").replace(/eira$/,"eiro").replace(/ica$/,"ico").replace(/ada$/,"ado");
+ return SINONIMOS[p]||p;
+}
+const palavras=s=>[...new Set(normCargo(s).split(" ").filter(p=>p.length>1&&!PALAVRAS_FORA.has(p)).map(raiz))];
+const canon=s=>palavras(s).sort().join(" ");
+/* Erro de digitação: aceita 1 letra diferente em palavras de 5 a 9 letras e 2 nas maiores */
+function perto(a,b){
+ if(a===b)return true;
+ const n=Math.min(a.length,b.length),lim=n>=10?2:n>=5?1:0;
+ if(!lim||Math.abs(a.length-b.length)>lim)return false;
+ let ant=[...Array(b.length+1).keys()];
+ for(let i=1;i<=a.length;i++){const at=[i];
+  for(let j=1;j<=b.length;j++)at[j]=Math.min(ant[j]+1,at[j-1]+1,ant[j-1]+(a[i-1]===b[j-1]?0:1));ant=at}
+ return ant[b.length]<=lim;
+}
 const PADRAO={};
 MODELOS.forEach(([cargo,r,d,a])=>{PADRAO[normCargo(cargo)]={cargo,requisitos:r.join("\n"),diferencial:d,atividades:a.join("\n")}});
 let meus=ler(CHAVE_MOD);if(!meus||typeof meus!=="object"||Array.isArray(meus))meus={};
@@ -585,10 +618,35 @@ function preencher(){
 
 /* Sugestão de conteúdo por cargo */
 let antes=null,estadoDica=null;
+/* Mesmo cargo: igual ou só com variação de escrita (feminino, "de", nível, sinônimo). Pode preencher sozinho. */
 function modeloDo(cargo){
  const k=normCargo(cargo);if(!k)return null;
  if(meus[k])return{...meus[k],fonte:"meu"};
- return PADRAO[k]?{...PADRAO[k],fonte:"padrao"}:null;
+ if(PADRAO[k])return{...PADRAO[k],fonte:"padrao"};
+ const c=canon(cargo);if(!c)return null;
+ const meu=Object.values(meus).find(m=>canon(m.cargo)===c);if(meu)return{...meu,fonte:"meu"};
+ const pd=Object.values(PADRAO).find(m=>canon(m.cargo)===c);
+ return pd?{...pd,fonte:"padrao"}:null;
+}
+/* Cargo parecido (erro de digitação, palavra a mais ou a menos). Nunca preenche sozinho: só oferece.
+   Aceita se 75% das palavras batem, ou se o que foi digitado só existe dentro de um modelo (ex.: "Mecânico"). */
+function parecido(cargo){
+ const a=palavras(cargo);if(!a.length)return null;
+ const cand=new Map();
+ Object.entries(meus).forEach(([k,m])=>cand.set(k,{...m,fonte:"meu"}));
+ Object.entries(PADRAO).forEach(([k,m])=>{if(!cand.has(k))cand.set(k,{...m,fonte:"padrao"})});
+ let melhor=null;const contem=[];
+ for(const m of cand.values()){
+  const b=palavras(m.cargo);if(!b.length)continue;
+  const livres=[...b];let iguais=0;
+  for(const p of a){const i=livres.findIndex(q=>perto(p,q));if(i>=0){livres.splice(i,1);iguais++}}
+  const nota=2*iguais/(a.length+b.length);
+  if(iguais===a.length)contem.push(m);
+  if(!melhor||nota>melhor.nota)melhor={m,nota};
+ }
+ if(melhor&&melhor.nota>=.75)return{...melhor.m,aprox:true};
+ if(contem.length===1&&a.some(p=>p.length>=4))return{...contem[0],aprox:true};
+ return null;
 }
 function substituivel(){
  const a=assinatura(E);if(a===VAZIO)return true;
@@ -603,20 +661,31 @@ function aplicaModelo(m){
  antes=Object.fromEntries(CONTEUDO.map(k=>[k,E[k]||""]));
  CONTEUDO.forEach(k=>{E[k]=m[k]||"";$(k).value=E[k]});
  gravar(CHAVE,E);render();
- dica("aplicado",m.fonte==="meu"?`Preenchido com o seu último anúncio de ${m.cargo}.`:m.fonte==="ia"?`Texto gerado pela IA para ${m.cargo}. Revise antes de publicar.`:`Preenchido com o modelo padrão de ${m.cargo}. Revise antes de publicar.`,"Desfazer",desfaz);
+ const origem=m.fonte==="meu"?`o seu último anúncio de ${m.cargo}`:`o modelo padrão de ${m.cargo}`;
+ dica("aplicado",m.fonte==="ia"?`Texto gerado pela IA para ${m.cargo}. Revise antes de publicar.`
+  :`Preenchido com ${origem}${m.aprox?", o mais parecido":""}.${m.fonte==="meu"&&!m.aprox?"":" Revise antes de publicar."}`,"Desfazer",desfaz);
 }
 function oferece(m){
- dica("oferta",`Há um modelo para ${m.cargo}. Usar o modelo troca o texto atual.`,"Usar modelo",()=>aplicaModelo(m));
+ const txt=!m.aprox?`Há um modelo para ${m.cargo}. Usar o modelo troca o texto atual.`
+  :assinatura(E)===VAZIO?`Não há modelo para este cargo. O mais parecido é ${m.cargo}.`
+  :`O modelo mais parecido é ${m.cargo}. Usar o modelo troca o texto atual.`;
+ dica("oferta",txt,"Usar modelo",()=>aplicaModelo(m));
 }
 function desfaz(){
  if(antes){CONTEUDO.forEach(k=>{E[k]=antes[k];$(k).value=E[k]});antes=null;gravar(CHAVE,E);render()}
- const m=modeloDo(E.cargo);if(m&&assinatura(m)!==assinatura(E))oferece(m);else dica(null);
+ const m=modeloDo(E.cargo)||parecido(E.cargo);if(m&&assinatura(m)!==assinatura(E))oferece(m);else dica(null);
 }
+let esperaParecido=null;
 function sugerir(){
+ clearTimeout(esperaParecido);
  const m=modeloDo(E.cargo);
- if(!m){if(estadoDica==="oferta")dica(null);return}
- if(assinatura(m)===assinatura(E))return;
- if(substituivel())aplicaModelo(m);else oferece(m);
+ if(m){if(assinatura(m)===assinatura(E))return;if(substituivel())aplicaModelo(m);else oferece(m);return}
+ if(estadoDica==="oferta")dica(null);
+ /* Só parecido: espera a pessoa parar de digitar e oferece, sem apagar um Desfazer que esteja na tela */
+ esperaParecido=setTimeout(()=>{
+  if(estadoDica==="aplicado")return;
+  const p=parecido(E.cargo);if(p&&assinatura(p)!==assinatura(E))oferece(p);
+ },500);
 }
 /* Ao salvar a arte, o texto vira o modelo do cargo neste navegador */
 function guardaModelo(){
@@ -635,6 +704,74 @@ function listaCargos(){
  $("cargos").replaceChildren(...[...nomes.values()].sort((a,b)=>a.localeCompare(b,"pt-BR")).map(c=>{
   const o=document.createElement("option");o.value=c;return o}));
 }
+
+/* Modelos salvos: leva os modelos aprendidos de um computador para outro, por arquivo .json.
+   Na importação, cargo novo entra; cargo que já existe fica com o texto salvo por último (campo "em"). */
+const modelosArq=(()=>{
+ const TIPO="modelos-vagas-patrimar";
+ const lista=()=>Object.values(meus).sort((a,b)=>String(a.cargo).localeCompare(String(b.cargo),"pt-BR"));
+ const msg=t=>{$("modMsg").textContent=t};
+ function resumo(){
+  const l=lista(),n=l.length;
+  $("modResumo").textContent=n?`Este navegador tem ${n} ${n===1?"modelo aprendido":"modelos aprendidos"}: ${l.slice(0,8).map(m=>m.cargo).join(", ")}${n>8?` e mais ${n-8}`:""}.`
+   :"Este navegador ainda não tem modelos aprendidos. Eles são criados ao salvar a arte de uma vaga.";
+  $("modExportar").disabled=!n;
+ }
+ function abre(){resumo();msg("");const d=$("dlgMod");if(typeof d.showModal==="function"){if(!d.open)d.showModal()}else d.setAttribute("open","")}
+ function fecha(){const d=$("dlgMod");if(typeof d.close==="function")d.close();else d.removeAttribute("open")}
+ async function entrega(blob,nome){
+  if(window.claude&&window.claude.use){const d=await window.claude.use("downloads");if(!d)throw new Error("sem permissão");await d.save({filename:nome,data:blob});return}
+  if(salvaComo()){
+   try{const h=await window.showSaveFilePicker({suggestedName:nome,id:"vagas-patrimar-modelos",startIn:"downloads",
+     types:[{description:"Modelos de vagas",accept:{"application/json":[".json"]}}]});
+    const w=await h.createWritable();await w.write(blob);await w.close();return}
+   catch(e){if(e&&e.name==="AbortError")throw e}
+  }
+  const arq=new File([blob],nome,{type:"application/json"});
+  if(compartilha(arq)){await navigator.share({files:[arq]});return}
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=nome;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+ }
+ async function exportar(){
+  const l=lista();if(!l.length)return;
+  const nome=`Modelos de vagas Patrimar - ${new Date().toISOString().slice(0,10)}.json`;
+  const blob=new Blob([JSON.stringify({tipo:TIPO,versao:1,app:VERSAO,exportadoEm:new Date().toISOString(),modelos:l},null,1)],{type:"application/json"});
+  try{await entrega(blob,nome);msg(`Arquivo salvo: ${nome}. No outro computador, abra o app, clique em Modelos salvos e use Importar arquivo.`)}
+  catch(e){msg(e&&(e.name==="AbortError"||e.code==="declined")?"Exportação cancelada.":"Não foi possível salvar o arquivo.")}
+ }
+ async function importar(ev){
+  const a=ev.target.files[0];ev.target.value="";if(!a)return;
+  let d=null;
+  try{if(a.size<=2e6)d=JSON.parse(await a.text())}catch(e){}
+  if(!d){msg("Não consegui ler esse arquivo. Use o arquivo .json gerado em Exportar arquivo.");return}
+  if(d.tipo!==TIPO||!Array.isArray(d.modelos)){msg("Esse arquivo não é de modelos do Gerador de Vagas.");return}
+  const txt=(v,max)=>typeof v==="string"?v.slice(0,max):"";
+  let novos=0,atualizados=0,iguais=0;
+  for(const x of d.modelos){
+   if(!x||typeof x!=="object")continue;
+   const cargo=txt(x.cargo,60).trim(),k=normCargo(cargo);
+   const m={cargo,requisitos:txt(x.requisitos,1500),diferencial:txt(x.diferencial,500),atividades:txt(x.atividades,2000),em:Number.isFinite(x.em)?x.em:0};
+   if(!k||assinatura(m)===VAZIO)continue;
+   if(PADRAO[k]&&assinatura(PADRAO[k])===assinatura(m))continue;/* igual ao padrão: não precisa guardar */
+   const atual=meus[k];
+   if(!atual){meus[k]=m;novos++}
+   else if(assinatura(atual)!==assinatura(m)&&m.em>(atual.em||0)){meus[k]=m;atualizados++}
+   else iguais++;
+  }
+  const ks=Object.keys(meus).sort((x,y)=>(meus[y].em||0)-(meus[x].em||0)),fora=ks.slice(MAX_MOD);
+  fora.forEach(k=>delete meus[k]);
+  if(!gravar(CHAVE_MOD,meus)){msg("Este navegador não deixou guardar os modelos importados.");return}
+  listaCargos();resumo();
+  const partes=[`${novos} ${novos===1?"novo":"novos"}`,`${atualizados} ${atualizados===1?"atualizado":"atualizados"}`];
+  if(iguais)partes.push(`${iguais} já ${iguais===1?"estava":"estavam"} em dia neste navegador`);
+  msg(`Importação concluída: ${partes.join(", ")}.${fora.length?` Limite de ${MAX_MOD} modelos: ${fora.length} dos mais antigos ficaram de fora.`:""}`);
+ }
+ return{ligar(){
+  $("abreMod").onclick=abre;$("modFechar").onclick=fecha;$("modExportar").onclick=exportar;
+  $("modArq").addEventListener("change",importar);
+  $("dlgMod").addEventListener("click",e=>{if(e.target===e.currentTarget)fecha()});
+ }};
+})();
 
 /* IA (Claude): escreve Requisitos, Diferencial e Principais atividades a partir do cargo.
    A chave da API é colada pela pessoa em "Configurar IA" e fica só neste navegador (localStorage); nunca vai para o GitHub.
@@ -914,6 +1051,7 @@ if("serviceWorker" in navigator&&window.isSecureContext)navigator.serviceWorker.
  instalacao.ligar();
  montar();
  ia.ligar();
+ modelosArq.ligar();
  if(compartilha(new File(["x"],"t.png",{type:"image/png"})))$("baixar").textContent="Compartilhar ou salvar PNG";
  else if(salvaComo())$("baixar").textContent="Salvar PNG";
  const salvaL=ler("geradorVagas.logo"),salvaF=ler("geradorVagas.foto");
