@@ -59,7 +59,7 @@ legend{font:700 16px var(--titulo);color:var(--acento);padding:0 6px}
 label{display:grid;gap:4px;font-weight:500;font-size:14px;min-width:0}
 label small,.nota{font-weight:400;color:var(--mudo);font-size:13px}
 .rot small{margin-left:4px}
-input[type=text],input[type=email],input[type=tel],textarea{width:100%;font:inherit;font-weight:400;font-size:15px;color:var(--fg);background:var(--bg);border:1px solid var(--linha);border-radius:6px;padding:9px 10px}
+input[type=text],input[type=email],input[type=tel],input[type=password],textarea{width:100%;font:inherit;font-weight:400;font-size:15px;color:var(--fg);background:var(--bg);border:1px solid var(--linha);border-radius:6px;padding:9px 10px}
 textarea{resize:vertical;min-height:72px;line-height:1.4}
 :is(input,textarea,button,select):focus-visible{outline:2px solid var(--acento);outline-offset:1px}
 .duas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
@@ -86,6 +86,15 @@ input[type=file]:focus-visible+.bt{outline:2px solid var(--acento)}
 .sug{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;background:var(--aviso-bg);color:var(--aviso-fg);padding:5px 6px 5px 10px;border-radius:6px;font-size:13px;line-height:1.3}
 .sug span{flex:1 1 220px}
 .bt.mini{padding:4px 10px;font-size:13px;border-color:currentColor;color:inherit;font-weight:700}
+/* IA: botão Gerar com IA e janela da chave da API */
+.ia{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;flex:none}
+.bt.ia-bt{display:inline-flex;align-items:center;gap:6px;border-color:var(--acento);color:var(--acento);font-weight:700}
+.bt.ia-bt:hover{background:var(--acento);color:var(--sobre)}
+.bt.ia-bt:disabled{opacity:.6;cursor:wait}
+.ia-msg{font-size:13px;color:var(--mudo);flex:1 1 200px}
+.ia-msg:empty{display:none}
+.dlg-bts{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between}
+.acoes-bts{display:flex;flex-wrap:wrap;gap:8px}
 /* Computador: tela única, sem rolagem. Formulário em 2 colunas + prévia; os textos crescem para ocupar a altura.
    Se a janela for baixa demais, só a coluna que não couber rola, nunca a página. */
 @media (min-width:1120px) and (min-height:560px){
@@ -98,7 +107,7 @@ input[type=file]:focus-visible+.bt{outline:2px solid var(--acento)}
   .form{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;min-height:0}
   .col{display:flex;flex-direction:column;gap:12px;min-height:0;overflow:auto;padding:2px}
   fieldset{padding:8px 14px 12px;gap:10px}
-  input[type=text],input[type=email],input[type=tel],textarea{padding:7px 10px}
+  input[type=text],input[type=email],input[type=tel],input[type=password],textarea{padding:7px 10px}
   .benef{gap:4px 12px}
   .cresce{flex:1 1 auto;display:flex;flex-direction:column}
   .cresce>label{display:flex;flex-direction:column;flex:var(--p,1) 1 0}
@@ -140,6 +149,7 @@ input[type=file]:focus-visible+.bt{outline:2px solid var(--acento)}
       </fieldset>
       <fieldset class="cresce">
         <legend>Conteúdo</legend>
+        <div class="ia"><button type="button" class="bt ia-bt" id="gerarIA"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 2l2.2 6.3L20.5 10l-6.3 2.2L12 18.5l-2.2-6.3L3.5 10l6.3-1.7zM19 15l.9 2.6 2.6.9-2.6.9L19 22l-.9-2.6-2.6-.9 2.6-.9z" fill="currentColor"/></svg>Gerar com IA</button><span class="ia-msg" id="iaMsg" role="status"></span></div>
         <div class="sug" id="sug" role="status" hidden><span id="sugTxt"></span><button type="button" class="bt mini" id="sugBt"></button></div>
         <label style="--p:3"><span class="rot">Requisitos <small>Um item por linha</small></span><textarea id="requisitos" rows="3"></textarea></label>
         <label style="--p:2"><span class="rot">Diferencial <small>Deixe vazio para tirar o bloco da arte</small></span><textarea id="diferencial" rows="2"></textarea></label>
@@ -167,7 +177,7 @@ input[type=file]:focus-visible+.bt{outline:2px solid var(--acento)}
           <div class="arq"><input type="file" id="arqFoto" accept="image/*"><label class="bt" for="arqFoto">Enviar foto do topo</label><button type="button" class="bt" id="tiraFoto" hidden>Voltar à foto padrão</button></div>
         </div>
       </fieldset>
-      <div class="acoes"><button type="button" class="bt" id="novo">Nova vaga em branco</button><span class="versao" id="versao"></span></div>
+      <div class="acoes"><div class="acoes-bts"><button type="button" class="bt" id="novo">Nova vaga em branco</button><button type="button" class="bt" id="cfgIA">Configurar IA</button></div><span class="versao" id="versao"></span></div>
      </div>
     </form>
 
@@ -190,6 +200,19 @@ input[type=file]:focus-visible+.bt{outline:2px solid var(--acento)}
     <p class="nota" id="dlgObs" hidden></p>
     <button type="button" class="bt pri" id="dlgOk" autofocus>Entendi</button>
   </div>
+</dialog>
+
+<dialog id="dlgIA" aria-labelledby="iaTitulo">
+  <form class="dlg" id="formIA" autocomplete="off">
+    <h2 id="iaTitulo">Chave da API do Claude</h2>
+    <p class="nota">Usada pelo botão <b>Gerar com IA</b>, que escreve Requisitos, Diferencial e Principais atividades a partir do cargo.</p>
+    <label>Chave da API<input type="password" id="chaveIA" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="sk-ant-..."></label>
+    <p class="nota">Crie a chave em <b>console.anthropic.com</b>, no menu <b>API Keys</b>. O uso é cobrado na conta da Anthropic.</p>
+    <p class="aviso">A chave fica salva só neste navegador. Quem usar este computador pode vê-la. Não salve em computador compartilhado e use uma chave só para este app, com limite de gasto.</p>
+    <p class="msg" id="iaDlgMsg" role="status"></p>
+    <button type="submit" class="bt pri" id="iaSalvar">Salvar e testar</button>
+    <div class="dlg-bts"><button type="button" class="bt" id="iaRemover">Remover chave</button><button type="button" class="bt" id="iaFechar">Fechar</button></div>
+  </form>
 </dialog>
 
 <script>
@@ -251,7 +274,7 @@ const EXEMPLO={
 const CAMPOS=["cargo","local","chamada","requisitos","diferencial","atividades","extras","telefone","email"];
 const CHAVE="geradorVagas.v1";
 /* Versão do aplicativo: fonte única. Ao publicar mudança, aumente aqui; o sw.js renova o cache sozinho. */
-const VERSAO="1.2.0";
+const VERSAO="1.3.0";
 
 function ler(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
 function gravar(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
@@ -580,7 +603,7 @@ function aplicaModelo(m){
  antes=Object.fromEntries(CONTEUDO.map(k=>[k,E[k]||""]));
  CONTEUDO.forEach(k=>{E[k]=m[k]||"";$(k).value=E[k]});
  gravar(CHAVE,E);render();
- dica("aplicado",m.fonte==="meu"?`Preenchido com o seu último anúncio de ${m.cargo}.`:`Preenchido com o modelo padrão de ${m.cargo}. Revise antes de publicar.`,"Desfazer",desfaz);
+ dica("aplicado",m.fonte==="meu"?`Preenchido com o seu último anúncio de ${m.cargo}.`:m.fonte==="ia"?`Texto gerado pela IA para ${m.cargo}. Revise antes de publicar.`:`Preenchido com o modelo padrão de ${m.cargo}. Revise antes de publicar.`,"Desfazer",desfaz);
 }
 function oferece(m){
  dica("oferta",`Há um modelo para ${m.cargo}. Usar o modelo troca o texto atual.`,"Usar modelo",()=>aplicaModelo(m));
@@ -612,6 +635,135 @@ function listaCargos(){
  $("cargos").replaceChildren(...[...nomes.values()].sort((a,b)=>a.localeCompare(b,"pt-BR")).map(c=>{
   const o=document.createElement("option");o.value=c;return o}));
 }
+
+/* IA (Claude): escreve Requisitos, Diferencial e Principais atividades a partir do cargo.
+   A chave da API é colada pela pessoa em "Configurar IA" e fica só neste navegador (localStorage); nunca vai para o GitHub.
+   O SDK oficial da Anthropic (anthropic-sdk.js) só é baixado no primeiro uso: o resto do app segue funcionando sem internet.
+   O texto gerado entra pelo mesmo caminho do modelo por cargo: tem Desfazer e, ao salvar a arte, vira o modelo do cargo. */
+const ia=(()=>{
+ const CHAVE_IA="geradorVagas.chaveIA";
+ const MODELO="claude-opus-5-5";
+ const FORMATO_CHAVE=/^sk-ant-[A-Za-z0-9_-]{20,}$/;
+ const ESQUEMA={type:"object",additionalProperties:false,required:["requisitos","diferencial","atividades"],
+  properties:{requisitos:{type:"array",items:{type:"string"}},diferencial:{type:"string"},atividades:{type:"array",items:{type:"string"}}}};
+ const limpa=s=>String(s||"").replace(/\s+/g," ").trim().replace(/^[•\-–]\s*/,"").replace(/[\s;.,:]+$/,"");
+ const lista=(xs,max)=>{const l=(Array.isArray(xs)?xs:[]).map(limpa).filter(Boolean).slice(0,max);
+  return l.map((x,i)=>x+(i===l.length-1?".":";")).join("\n")};
+ const EXEMPLOS=["Operador de Seccionadora","Auxiliar de Expedição","Assistente de PCP"].map(c=>PADRAO[normCargo(c)]).filter(Boolean)
+  .map(m=>`Cargo: ${m.cargo}\n`+JSON.stringify({requisitos:itens(m.requisitos).map(limpa),diferencial:limpa(m.diferencial),atividades:itens(m.atividades).map(limpa)}));
+ const SISTEMA=`Você escreve o conteúdo de anúncios de vagas da Patrimar Móveis, indústria de móveis em MDF.
+O texto vai numa arte para Instagram, LinkedIn e status do WhatsApp, com pouco espaço.
+
+Regras:
+- Português do Brasil, linguagem simples e direta, para quem vai se candidatar.
+- requisitos: 2 itens. diferencial: 1 frase curta. atividades: 4 ou 5 itens.
+- Cada item com no máximo 60 caracteres.
+- Atividades começam com verbo no infinitivo.
+- Não invente salário, benefícios, horário nem turno.
+- Só cite curso obrigatório ou NR quando a função exigir por lei (ex.: NR-11 para empilhadeira, NR-10 para eletricista).
+- Não termine os itens com ponto nem com ponto e vírgula.
+
+Exemplos do padrão da empresa:
+${EXEMPLOS.join("\n\n")}`;
+ let sdk=null,tentativa=0,ocupado=false;
+ const msg=t=>{$("iaMsg").textContent=t};
+ const falha=t=>Object.assign(new Error(t),{msgIA:t});
+ const chave=()=>{const k=ler(CHAVE_IA);return typeof k==="string"?k:""};
+ /* Import sob demanda. Se falhar (sem internet), a próxima tentativa usa outro endereço para não reaproveitar a falha. */
+ function carregaSDK(){
+  if(!sdk)sdk=import(`./anthropic-sdk.js?v=${encodeURIComponent(VERSAO)}${tentativa?"&r="+tentativa:""}`)
+   .then(m=>m.default).catch(e=>{sdk=null;tentativa++;throw e});
+  return sdk;
+ }
+ async function cliente(k){
+  const A=await carregaSDK();
+  return{A,c:new A({apiKey:k,dangerouslyAllowBrowser:true,timeout:60000,maxRetries:1})};
+ }
+ function erro(e,A){
+  if(e&&e.msgIA)return e.msgIA;
+  if(!A)return"Não consegui carregar a IA. Verifique a internet e tente de novo.";
+  if(e instanceof A.AuthenticationError)return"A Anthropic recusou a chave. Confira em Configurar IA.";
+  if(e instanceof A.PermissionDeniedError)return"Esta chave não tem permissão para usar a IA.";
+  if(e instanceof A.NotFoundError)return`O modelo ${MODELO} não está disponível para esta chave.`;
+  if(e instanceof A.RateLimitError)return"Limite de uso da IA atingido. Aguarde um minuto e tente de novo.";
+  if(e instanceof A.BadRequestError)return"A Anthropic recusou o pedido: "+e.message;
+  if(e instanceof A.APIConnectionError)return"Sem conexão com a IA. Verifique a internet.";
+  if(e instanceof A.APIError)return`A IA está indisponível agora (erro ${e.status}). Tente de novo em instantes.`;
+  return"Não foi possível gerar o texto. Tente de novo.";
+ }
+ async function gerar(){
+  if(ocupado)return;
+  const k=chave();
+  if(!k){abre("Cole a chave da API para usar a IA.");return}
+  const cargo=String(E.cargo||"").trim();
+  if(!cargo){msg("Preencha o cargo primeiro.");$("cargo").focus();return}
+  const bt=$("gerarIA");ocupado=true;bt.disabled=true;msg("A IA está escrevendo o texto…");
+  let A;
+  try{
+   const r=await cliente(k);A=r.A;
+   const res=await r.c.beta.messages.create({
+    model:MODELO,max_tokens:16000,
+    betas:["server-side-fallback-2026-07-01"],fallbacks:"default",
+    output_config:{effort:"low",format:{type:"json_schema",schema:ESQUEMA}},
+    system:SISTEMA,
+    messages:[{role:"user",content:`Cargo: ${cargo}`}]
+   });
+   if(res.stop_reason==="refusal")throw falha("A IA não escreveu o texto para este cargo. Revise o nome do cargo e tente de novo.");
+   const t=res.content.find(b=>b.type==="text");
+   let d=null;try{d=JSON.parse(t?t.text:"")}catch(e){}
+   if(res.stop_reason==="max_tokens"||!d||typeof d!=="object")throw falha("A IA devolveu uma resposta incompleta. Tente de novo.");
+   const dif=limpa(d.diferencial);
+   const m={cargo,fonte:"ia",requisitos:lista(d.requisitos,3),diferencial:dif?dif+".":"",atividades:lista(d.atividades,6)};
+   if(!m.requisitos&&!m.atividades)throw falha("A IA devolveu um texto vazio. Tente de novo.");
+   if(normCargo(E.cargo)!==normCargo(cargo)){msg("O cargo mudou enquanto a IA escrevia. Clique de novo em Gerar com IA.");return}
+   msg("");aplicaModelo(m);
+  }catch(e){msg(erro(e,A))}
+  finally{ocupado=false;bt.disabled=false}
+ }
+ /* Janela da chave */
+ function abre(t){
+  const d=$("dlgIA"),k=chave();
+  $("chaveIA").value="";
+  $("chaveIA").placeholder=k?`Chave salva, termina em ${k.slice(-4)}`:"sk-ant-...";
+  $("iaRemover").hidden=!k;
+  $("iaDlgMsg").textContent=t||(k?"Há uma chave salva neste navegador. Para trocar, cole a nova.":"");
+  if(typeof d.showModal==="function"){if(!d.open)d.showModal()}else d.setAttribute("open","");
+  $("chaveIA").focus();
+ }
+ function fecha(){const d=$("dlgIA");if(typeof d.close==="function")d.close();else d.removeAttribute("open")}
+ async function salvar(ev){
+  ev.preventDefault();
+  const dm=$("iaDlgMsg"),v=$("chaveIA").value.trim()||chave();
+  if(!v){dm.textContent="Cole a chave da API.";return}
+  if(!FORMATO_CHAVE.test(v)){dm.textContent="Isso não parece uma chave da API da Anthropic. Ela começa com sk-ant-.";return}
+  const bt=$("iaSalvar");bt.disabled=true;dm.textContent="Testando a chave…";
+  let A;
+  try{
+   const r=await cliente(v);A=r.A;
+   await r.c.models.retrieve(MODELO);/* consulta gratuita: confirma a chave e o acesso ao modelo */
+   if(!gravar(CHAVE_IA,v)){dm.textContent="A chave é válida, mas este navegador não deixou salvar.";return}
+   fecha();msg("Chave salva. Agora é só clicar em Gerar com IA.");
+  }catch(e){
+   const recusada=A&&[A.AuthenticationError,A.PermissionDeniedError,A.NotFoundError,A.BadRequestError].some(C=>e instanceof C);
+   if(recusada){dm.textContent=erro(e,A)+" A chave não foi salva.";return}
+   /* Sem internet ou IA fora do ar: guarda e testa de novo ao gerar */
+   dm.textContent=gravar(CHAVE_IA,v)?"Chave salva, mas não deu para testar agora. "+erro(e,A):erro(e,A);
+   $("iaRemover").hidden=!chave();
+  }finally{bt.disabled=false}
+ }
+ function remover(){
+  try{localStorage.removeItem(CHAVE_IA)}catch(e){}
+  $("chaveIA").value="";$("chaveIA").placeholder="sk-ant-...";$("iaRemover").hidden=true;
+  $("iaDlgMsg").textContent="Chave removida deste navegador.";
+ }
+ return{ligar(){
+  $("gerarIA").onclick=gerar;$("cfgIA").onclick=()=>abre();
+  $("formIA").addEventListener("submit",salvar);
+  $("iaRemover").onclick=remover;$("iaFechar").onclick=fecha;
+  $("dlgIA").addEventListener("click",e=>{if(e.target===e.currentTarget)fecha()});
+  $("cargo").addEventListener("input",()=>{if(!ocupado)msg("")});
+ }};
+})();
 
 function montar(){
  $("benef").innerHTML="";
@@ -761,6 +913,7 @@ if("serviceWorker" in navigator&&window.isSecureContext)navigator.serviceWorker.
  $("versao").textContent="Versão "+VERSAO;
  instalacao.ligar();
  montar();
+ ia.ligar();
  if(compartilha(new File(["x"],"t.png",{type:"image/png"})))$("baixar").textContent="Compartilhar ou salvar PNG";
  else if(salvaComo())$("baixar").textContent="Salvar PNG";
  const salvaL=ler("geradorVagas.logo"),salvaF=ler("geradorVagas.foto");
