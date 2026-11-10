@@ -23,7 +23,8 @@ No Chrome e no Edge do computador, abre a janela "Salvar como" com esse nome já
 No celular, abre o compartilhar do aparelho (WhatsApp, Instagram, Salvar imagem).
 
 ## Sugestão de conteúdo por cargo
-Ao digitar o **Cargo**, o app preenche Requisitos, Diferencial e Principais atividades. A lista de cargos aparece ao clicar no campo.
+Ao digitar o **Cargo**, o app preenche Requisitos, Diferencial e Principais atividades.
+- **Lista de cargos:** clicar no campo ou na seta mostra todos os cargos, com o atual marcado, mesmo com o campo preenchido. Digitar filtra pelo começo de cada palavra (`op emp` acha `Operador de Empilhadeira`). Funciona com mouse, toque e teclado (setas, Enter e Esc).
 - **De onde vem o texto:** primeiro, o último anúncio salvo neste navegador para aquele cargo; se não houver, o modelo padrão (constante `MODELOS`, no `index.html`).
 - **Aprende com o uso:** ao clicar em Salvar PNG, o texto da vaga vira o modelo do cargo neste navegador. Cargo novo entra na lista. Guarda até 80 cargos.
 - **Não apaga o que foi digitado:** só preenche sozinho se os campos estiverem vazios ou com um modelo. Se houver texto próprio, mostra o botão **Usar modelo**. Depois de preencher, **Desfazer** volta ao texto anterior.
@@ -56,6 +57,7 @@ A versão fica em um lugar só: a constante `VERSAO`, no `index.html`. Ela apare
 Ao publicar uma mudança, aumente a versão (ex.: `1.1.0` → `1.2.0`). O `sw.js` lê esse número e renova a cópia offline sozinho. Não é preciso editar o `sw.js`.
 
 ### Histórico
+- **1.4.1**: a lista de cargos mostra todos ao clicar no campo, mesmo com um cargo já preenchido (antes era preciso apagar o campo).
 - **1.4.0**: busca de cargo tolerante (feminino, plural, nível, turno, sinônimos e erro de digitação) e oferta do modelo mais parecido; botão Modelos salvos para exportar e importar os modelos aprendidos entre computadores.
 - **1.3.0**: botão Configurar IA para guardar a chave da API do Claude neste navegador; botão Gerar com IA, que escreve Requisitos, Diferencial e Principais atividades a partir do cargo.
 - **1.2.0**: sugestão de Requisitos, Diferencial e Principais atividades ao digitar o cargo; 20 modelos padrão; o app aprende com cada vaga salva.
