@@ -27,9 +27,10 @@ Ao digitar o **Cargo**, o app preenche Requisitos, Diferencial e Principais ativ
 - **De onde vem o texto:** primeiro, o último anúncio salvo neste navegador para aquele cargo; se não houver, o modelo padrão (constante `MODELOS`, no `index.html`).
 - **Aprende com o uso:** ao clicar em Salvar PNG, o texto da vaga vira o modelo do cargo neste navegador. Cargo novo entra na lista. Guarda até 80 cargos.
 - **Não apaga o que foi digitado:** só preenche sozinho se os campos estiverem vazios ou com um modelo. Se houver texto próprio, mostra o botão **Usar modelo**. Depois de preencher, **Desfazer** volta ao texto anterior.
-- Não diferencia maiúscula, acento nem "(a)": `operador(a) de cnc` acha `Operador de CNC`.
+- **Mesmo cargo escrito de outro jeito:** preenche sozinho, como se fosse igual. O app ignora maiúscula, acento, "(a)", feminino, plural, "de/da/do", nível (I, II, Jr, Pleno, Sênior) e turno, e troca sinônimos (ajudante = auxiliar, op. = operador, téc. = técnico). Ex.: `Operadora CNC II`, `Op. de CNC` e `operador(a) de cnc` acham `Operador de CNC`; `Ajudante de Produção - 2º turno` acha `Auxiliar de Produção`. Para incluir um sinônimo, edite `SINONIMOS` no `index.html`.
+- **Cargo parecido:** não preenche sozinho. Quando a pessoa para de digitar, mostra "o mais parecido é..." com o botão **Usar modelo**. Vale para erro de digitação (`Secionadora` → `Seccionadora`), palavra a mais ou a menos (`Operador de Coladeira` → `Operador de Coladeira de Borda`) e cargo que só existe dentro de um modelo (`Mecânico` → `Mecânico de Manutenção`). Cargo de outra máquina ou área não é oferecido: `Operador de Lixadeira` não puxa o de Fresadora, e `Operador` sozinho não puxa nada.
 - Os modelos padrão são genéricos: o RH deve revisar antes de publicar. Para mudar ou incluir um cargo para todos, edite `MODELOS` e publique uma versão nova.
-- Limite: os modelos aprendidos ficam só no navegador onde a vaga foi salva. Outro computador não vê.
+- **Levar para outro computador:** os modelos aprendidos ficam no navegador onde a vaga foi salva. Para passar para outro, use **Modelos salvos** (embaixo do formulário) → **Exportar arquivo**, e no outro computador **Modelos salvos** → **Importar arquivo**. A importação junta os modelos: cargo novo entra; quando o mesmo cargo existe nos dois, fica o texto salvo por último. Para um modelo valer para todos sem importar, mande o arquivo para quem cuida do app incluir em `MODELOS`.
 
 ## Gerar com IA (Claude)
 O botão **Gerar com IA**, no bloco Conteúdo, escreve Requisitos, Diferencial e Principais atividades a partir do **Cargo**.
@@ -55,6 +56,7 @@ A versão fica em um lugar só: a constante `VERSAO`, no `index.html`. Ela apare
 Ao publicar uma mudança, aumente a versão (ex.: `1.1.0` → `1.2.0`). O `sw.js` lê esse número e renova a cópia offline sozinho. Não é preciso editar o `sw.js`.
 
 ### Histórico
+- **1.4.0**: busca de cargo tolerante (feminino, plural, nível, turno, sinônimos e erro de digitação) e oferta do modelo mais parecido; botão Modelos salvos para exportar e importar os modelos aprendidos entre computadores.
 - **1.3.0**: botão Configurar IA para guardar a chave da API do Claude neste navegador; botão Gerar com IA, que escreve Requisitos, Diferencial e Principais atividades a partir do cargo.
 - **1.2.0**: sugestão de Requisitos, Diferencial e Principais atividades ao digitar o cargo; 20 modelos padrão; o app aprende com cada vaga salva.
 - **1.1.0**: logomarca original no lugar do print desfocado; ícone novo (P e estrela da marca sobre fundo vermelho); botão Instalar aplicativo; tela do computador sem rolagem; arquivo salvo com o nome da vaga; versão visível no app.
