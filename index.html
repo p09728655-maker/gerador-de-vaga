@@ -409,7 +409,7 @@ const EXEMPLO={
 const CAMPOS=["cargo","local","chamada","requisitos","diferencial","atividades","extras","telefone","email"];
 const CHAVE="geradorVagas.v1";
 /* Versão do aplicativo: fonte única. Ao publicar mudança, aumente aqui; o sw.js renova o cache sozinho. */
-const VERSAO="1.7.1";
+const VERSAO="1.7.2";
 
 function ler(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
 function gravar(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
@@ -1168,6 +1168,20 @@ async function gravaArquivo(h,dados){
  const w=await h.createWritable();
  try{await w.write(dados);await w.close()}catch(e){try{await w.abort()}catch(_){}throw e}
 }
+/* Janela do Windows (pasta ou Salvar como) que volta "cancelada" em menos de 1 s não foi fechada por ninguém:
+   o navegador não conseguiu abrir. Causa mais provável: o local de partida que o Chrome guardou para essa janela
+   não serve mais. Então tenta de novo sem local guardado e lembra disso neste navegador. Se nem assim abrir,
+   devolve SEM_JANELA e quem chamou baixa na pasta Downloads, em vez de parar. */
+const SEM_JANELA="semJanela",JANELA_MIN_MS=1000;
+const semLocal={chave:id=>"janelaSemLocal:"+id,
+ tem(id){try{return localStorage.getItem(this.chave(id))==="1"}catch(e){return false}},
+ marca(id){try{localStorage.setItem(this.chave(id),"1")}catch(e){}}};
+async function abreJanela(id,startIn,abrir){
+ const tenta=async o=>{const t0=performance.now();
+  try{return await abrir(o)}catch(e){if(e&&e.name==="AbortError"&&performance.now()-t0<JANELA_MIN_MS)return SEM_JANELA;throw e}};
+ if(!semLocal.tem(id)){const r=await tenta({id,startIn});if(r!==SEM_JANELA)return r;semLocal.marca(id)}
+ return tenta({});
+}
 /* Download */
 async function baixar(){
  const bt=$("baixar"),msg=$("msg");msg.textContent="";
@@ -1186,11 +1200,12 @@ async function baixar(){
    if(compartilha(arq)){
     await navigator.share({files:[arq]});msg.textContent="Arte pronta: "+nome;return;
    }
-   let h=null,falhou=null;
+   let h=null,falhou=null,semJanela=false;
    if(salvaComo()){
-    try{h=await window.showSaveFilePicker({suggestedName:nome,id:"vagas-patrimar",startIn:"downloads",
-      types:[{description:"Imagem PNG",accept:{"image/png":[".png"]}}]})}
+    try{h=await abreJanela("vagas-patrimar","downloads",o=>window.showSaveFilePicker({...o,suggestedName:nome,
+      types:[{description:"Imagem PNG",accept:{"image/png":[".png"]}}]}))}
     catch(e){if(e&&e.name==="AbortError")throw e}/* sem permissão para a janela: segue no download comum */
+    if(h===SEM_JANELA){h=null;semJanela=true}
     if(h){
      try{await gravaArquivo(h,blob);msg.textContent="Arte salva: "+h.name;return}
      catch(e){falhou=e}/* não gravou no local escolhido: segue no download comum */
@@ -1198,7 +1213,8 @@ async function baixar(){
    }
    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=nome;a.click();
    setTimeout(()=>URL.revokeObjectURL(a.href),4000);
-   msg.textContent=falhou?`Não foi possível gravar em ${h.name}; a arte foi baixada pelo navegador (pasta Downloads): ${nome}.${detalheErro(falhou)}`:"Arte salva: "+nome;
+   msg.textContent=falhou?`Não foi possível gravar em ${h.name}; a arte foi baixada pelo navegador (pasta Downloads): ${nome}.${detalheErro(falhou)}`
+    :semJanela?`O navegador não conseguiu abrir a janela Salvar como; a arte foi baixada na pasta Downloads: ${nome}.`:"Arte salva: "+nome;
   }
  }catch(e){
   if(e&&(e.code==="declined"||e.name==="AbortError"))msg.textContent="Salvamento cancelado.";
@@ -1236,7 +1252,8 @@ const pastaDB=(()=>{
 async function pastaParaSalvar(trocar,k="pasta",id="vagas-patrimar"){
  const h=trocar||!lembraPasta()?null:await pastaDB.ler(k);
  if(h){try{let p=await h.queryPermission({mode:"readwrite"});if(p!=="granted")p=await h.requestPermission({mode:"readwrite"});if(p==="granted")return h}catch(e){}}
- const nova=await window.showDirectoryPicker({id,mode:"readwrite",startIn:"pictures"});
+ const nova=await abreJanela(id,"pictures",o=>window.showDirectoryPicker({...o,mode:"readwrite"}));
+ if(nova===SEM_JANELA)return nova;
  if(lembraPasta())await pastaDB.gravar(nova,k);return nova;
 }
 /* As 3 artes ficam guardadas enquanto nada mudar: um segundo clique (ex.: depois de um cancelamento) é imediato */
@@ -1256,13 +1273,14 @@ async function geraArtes(){
 async function baixarTodas(trocar){
  const bt=$("baixar3"),msg=$("msg");msg.textContent="";
  guardaModelo();bt.disabled=true;
- let pasta=null,sub=null,gravando=false;
+ let pasta=null,sub=null,gravando=false,semJanela=false;
  try{
   /* A janela de pasta precisa abrir logo após o clique: escolhe o destino antes de desenhar */
   if(usaPasta()){
    if(!lembraPasta())msg.textContent="Escolha a pasta para as 3 artes.";
    else if(trocar||!(await pastaDB.ler()))msg.textContent="Escolha ou crie uma pasta para as artes, por exemplo Vagas. As próximas vão direto para ela.";
-   pasta=await pastaParaSalvar(trocar);msg.textContent=""}
+   pasta=await pastaParaSalvar(trocar);msg.textContent="";
+   if(pasta===SEM_JANELA){pasta=null;semJanela=true}}
   const{arqs,apertou}=await geraArtes();
   const aviso=apertou.length?` Atenção: o texto não coube em ${apertou.join(" e ")}; confira ${apertou.length>1?"essas artes":"essa arte"}.`:"";
   if(window.claude&&window.claude.use){
@@ -1283,7 +1301,8 @@ async function baixarTodas(trocar){
   }else{
    for(const a of arqs){const l=document.createElement("a");l.href=URL.createObjectURL(a);l.download=a.name;l.click();
     setTimeout(()=>URL.revokeObjectURL(l.href),4000);await new Promise(r=>setTimeout(r,250))}
-   msg.textContent="3 artes baixadas. Se o navegador perguntar, permita baixar vários arquivos."+aviso;
+   msg.textContent=(semJanela?"O navegador não conseguiu abrir a janela para escolher a pasta, então as 3 artes foram baixadas na pasta Downloads.":"3 artes baixadas.")
+    +" Se o navegador perguntar, permita baixar vários arquivos."+aviso;
   }
  }catch(e){
   const n=e&&e.name;
@@ -1627,10 +1646,11 @@ const convites=(()=>{
    }
    const arq=new File([b],nome,{type:"image/png"});
    if(compartilha(arq)){await navigator.share({files:[arq]});msg("Arte pronta: "+nome);return}
-   let h=null,falhou=null;
+   let h=null,falhou=null,semJanela=false;
    if(salvaComo()){
-    try{h=await window.showSaveFilePicker({suggestedName:nome,id:JANELA,startIn:"downloads",types:[{description:"Imagem PNG",accept:{"image/png":[".png"]}}]})}
+    try{h=await abreJanela(JANELA,"downloads",o=>window.showSaveFilePicker({...o,suggestedName:nome,types:[{description:"Imagem PNG",accept:{"image/png":[".png"]}}]}))}
     catch(e){if(e&&e.name==="AbortError")throw e}/* sem permissão para a janela: segue no download comum */
+    if(h===SEM_JANELA){h=null;semJanela=true}
     if(h){
      try{await gravaArquivo(h,b);msg("Arte salva: "+h.name);return}
      catch(e){falhou=e}/* não gravou no local escolhido: segue no download comum */
@@ -1638,7 +1658,8 @@ const convites=(()=>{
    }
    const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=nome;a.click();
    setTimeout(()=>URL.revokeObjectURL(a.href),4000);
-   msg(falhou?`Não foi possível gravar em ${h.name}; a arte foi baixada pelo navegador (pasta Downloads): ${nome}.${detalheErro(falhou)}`:"Arte salva: "+nome);
+   msg(falhou?`Não foi possível gravar em ${h.name}; a arte foi baixada pelo navegador (pasta Downloads): ${nome}.${detalheErro(falhou)}`
+    :semJanela?`O navegador não conseguiu abrir a janela Salvar como; a arte foi baixada na pasta Downloads: ${nome}.`:"Arte salva: "+nome);
   }catch(e){
    if(e&&(e.code==="declined"||e.name==="AbortError"))msg("Salvamento cancelado.");
    else if(e&&e.code==="rate_limited")msg("Já existe uma confirmação aberta. Responda a ela e tente de novo.");
@@ -1661,12 +1682,13 @@ const convites=(()=>{
  /* Salvar as 3 artes: mesmo funcionamento da vaga, mas com pasta própria (ex.: Convites › Reunião de resultados - 13-11-2026) */
  async function baixarTodas(trocar){
   const bt=$("cvBaixar3"),m=$("cvMsg");m.textContent="";bt.disabled=true;
-  let pasta=null,sub=null,gravando=false;
+  let pasta=null,sub=null,gravando=false,semJanela=false;
   try{
    if(usaPasta()){
     if(!lembraPasta())m.textContent="Escolha a pasta para as 3 artes.";
     else if(trocar||!(await pastaDB.ler(PASTA)))m.textContent="Escolha ou crie uma pasta para os convites, por exemplo Convites. Os próximos vão direto para ela.";
-    pasta=await pastaParaSalvar(trocar,PASTA,JANELA);m.textContent=""}
+    pasta=await pastaParaSalvar(trocar,PASTA,JANELA);m.textContent="";
+    if(pasta===SEM_JANELA){pasta=null;semJanela=true}}
    const{arqs,apertou}=await geraArtes();
    const aviso=apertou.length?` Atenção: o texto não coube em ${apertou.join(" e ")}; confira ${apertou.length>1?"essas artes":"essa arte"}.`:"";
    if(window.claude&&window.claude.use){
@@ -1686,7 +1708,8 @@ const convites=(()=>{
    }else{
     for(const a of arqs){const l=document.createElement("a");l.href=URL.createObjectURL(a);l.download=a.name;l.click();
      setTimeout(()=>URL.revokeObjectURL(l.href),4000);await new Promise(r=>setTimeout(r,250))}
-    m.textContent="3 artes baixadas. Se o navegador perguntar, permita baixar vários arquivos."+aviso;
+    m.textContent=(semJanela?"O navegador não conseguiu abrir a janela para escolher a pasta, então as 3 artes foram baixadas na pasta Downloads.":"3 artes baixadas.")
+     +" Se o navegador perguntar, permita baixar vários arquivos."+aviso;
    }
   }catch(e){
    const n=e&&e.name;
