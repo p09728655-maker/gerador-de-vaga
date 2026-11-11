@@ -409,7 +409,7 @@ const EXEMPLO={
 const CAMPOS=["cargo","local","chamada","requisitos","diferencial","atividades","extras","telefone","email"];
 const CHAVE="geradorVagas.v1";
 /* Versão do aplicativo: fonte única. Ao publicar mudança, aumente aqui; o sw.js renova o cache sozinho. */
-const VERSAO="1.7.3";
+const VERSAO="1.7.4";
 
 function ler(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
 function gravar(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
@@ -1701,16 +1701,30 @@ const convites=(()=>{
   artes={ch,apertou,arqs:blobs.map((b,i)=>new File([b],nomeArq(ks[i]),{type:"image/png"}))};
   return artes;
  }
- /* Salvar as 3 artes: mesmo funcionamento da vaga, mas com pasta própria (ex.: Convites › Reunião de resultados - 13-11-2026) */
+ /* Pasta das vagas, já escolhida e autorizada no app instalado: os convites vão para "<pasta das vagas> › Convites",
+    sem abrir janela. Em alguns computadores a janela de escolher pasta abre mas não devolve a pasta; assim os convites
+    salvam igual às vagas. Sem pasta das vagas, ou sem permissão, devolve null e o convite pede a pasta pela janela. */
+ async function pastaDasVagas(){
+  const v=await pastaDB.ler();if(!v)return null;
+  try{let p=await v.queryPermission({mode:"readwrite"});if(p!=="granted")p=await v.requestPermission({mode:"readwrite"});
+   if(p!=="granted")return null;
+   return{pasta:await v.getDirectoryHandle("Convites",{create:true}),base:v.name}}catch(e){return null}
+ }
+ /* Salvar as 3 artes: na pasta das vagas › Convites › Reunião de resultados - 13-11-2026.
+    Trocar pasta escolhe uma pasta só para os convites, que passa a valer no lugar da das vagas. */
  async function baixarTodas(trocar){
   const bt=$("cvBaixar3"),m=$("cvMsg");m.textContent="";bt.disabled=true;
-  let pasta=null,sub=null,gravando=false,semJanela=false;
+  let pasta=null,base="",sub=null,gravando=false,semJanela=false;
+  const onde=()=>(base?base+" › ":"")+pasta.name+(sub?" › "+sub.name:"");
   try{
    if(usaPasta()){
-    if(!lembraPasta())m.textContent="Escolha a pasta para as 3 artes.";
-    else if(trocar||!(await pastaDB.ler(PASTA)))m.textContent="Escolha ou crie uma pasta para os convites, por exemplo Convites. Os próximos vão direto para ela.";
-    pasta=await pastaParaSalvar(trocar,PASTA,JANELA);m.textContent="";
-    if(pasta===SEM_JANELA){pasta=null;semJanela=true}}
+    const propria=lembraPasta()&&!trocar?await pastaDB.ler(PASTA):null;
+    if(lembraPasta()&&!trocar&&!propria){const v=await pastaDasVagas();if(v)({pasta,base}=v)}
+    if(!pasta){
+     if(!lembraPasta())m.textContent="Escolha a pasta para as 3 artes.";
+     else if(trocar||!propria)m.textContent="Escolha ou crie uma pasta para os convites, por exemplo Convites. Os próximos vão direto para ela.";
+     pasta=await pastaParaSalvar(trocar,PASTA,JANELA);m.textContent="";
+     if(pasta===SEM_JANELA){pasta=null;semJanela=true}}}
    const{arqs,apertou}=await geraArtes();
    const aviso=apertou.length?` Atenção: o texto não coube em ${apertou.join(" e ")}; confira ${apertou.length>1?"essas artes":"essa arte"}.`:"";
    if(window.claude&&window.claude.use){
@@ -1723,7 +1737,7 @@ const convites=(()=>{
     sub=await pasta.getDirectoryHandle(nomePasta(),{create:true});
     for(const a of arqs)await gravaArquivo(await sub.getFileHandle(a.name,{create:true}),a);
     gravando=false;
-    m.textContent=`3 artes salvas em ${pasta.name} › ${sub.name}.${aviso}`;
+    m.textContent=`3 artes salvas em ${onde()}.${aviso}`;
     if(lembraPasta()){const tb=document.createElement("button");tb.type="button";tb.className="bt mini";tb.textContent="Trocar pasta";tb.onclick=()=>baixarTodas(true);m.append(tb)}
    }else if(compartilhaVarios(arqs)){
     await navigator.share({files:arqs});m.textContent="Artes prontas."+aviso;
@@ -1734,8 +1748,8 @@ const convites=(()=>{
    }
   }catch(e){
    const n=e&&e.name;
-   if(n==="NotFoundError"&&pasta){await pastaDB.apagar(PASTA);m.textContent=`A pasta ${pasta.name} não foi encontrada. Clique de novo para escolher outra.`}
-   else if(gravando)m.textContent=falhaGravar(sub?`${pasta.name} › ${sub.name}`:pasta.name,e);
+   if(n==="NotFoundError"&&pasta){await pastaDB.apagar(base?"pasta":PASTA);m.textContent=`A pasta ${base||pasta.name} não foi encontrada. Clique de novo para escolher outra.`}
+   else if(gravando)m.textContent=falhaGravar(onde(),e);
    else if(n==="AbortError"||(e&&e.code==="declined")){
     if(usaPasta()&&!pasta){m.textContent=cancelouPasta("Convites");m.append(botaoDownloads(geraArtes,m))}
     else m.textContent="Salvamento cancelado.";}
