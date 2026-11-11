@@ -1,7 +1,9 @@
 # Gerador de Vagas Patrimar
 
-Aplicativo instalável (PWA) que gera anúncios de vagas no padrão Patrimar:
-Instagram (1080×1350), LinkedIn (1200×1200) e status do WhatsApp (1080×1920).
+Aplicativo instalável (PWA) com duas abas, no topo da tela:
+- **Vagas**: anúncios de vagas para Instagram (1080×1350), LinkedIn (1200×1200) e status do WhatsApp (1080×1920).
+- **Convites**: convites de reunião, treinamento, evento, aniversário e aniversariantes do mês (ver [Convites](#convites)).
+
 Não tem servidor nem banco de dados: tudo roda no aparelho e funciona sem internet depois do primeiro acesso.
 A única exceção é o botão opcional **Gerar com IA**, que precisa de internet e de uma chave da API do Claude.
 
@@ -30,6 +32,27 @@ Cada arquivo sai com o nome da vaga e a rede, por exemplo `Operador de Fresadora
 - **Só Instagram / Só LinkedIn / Só WhatsApp**: salva apenas a arte da aba aberta, como antes (janela "Salvar como" no computador; compartilhar no celular).
 - **Copiar legenda**: copia o texto do post, montado com os campos preenchidos (chamada e cargo, cidade, requisitos, diferencial, atividades, benefícios e contato) e hashtags. É só colar no Instagram, LinkedIn ou WhatsApp. Se o navegador não deixar copiar sozinho, abre uma janela com o texto selecionado.
   - Hashtags: as fixas da constante `HASHTAGS` no `index.html` (`#vagas #emprego #vagasdeemprego #trabalheconosco #industriamoveleira #patrimarmoveis`), mais a do cargo (`#operadordecnc`, sem nível nem turno) e a da cidade (`#vagasjaci`), geradas dos campos.
+
+## Convites
+Aba **Convites**, no topo da tela. Tem formulário, prévia e botões de salvar próprios; a aba Vagas não muda.
+- **Tipos:** Reunião, Treinamento, Evento, Aniversário e Aniversariantes do mês. Cada tipo mostra só os campos dele e guarda o próprio texto neste navegador: trocar de tipo não apaga o que foi digitado no outro.
+- **Formatos:** Post 4:5 (1080×1350, para WhatsApp e e-mail), Status 9:16 (1080×1920) e Mural A4 (1240×1754, A4 a 150 dpi, para imprimir e afixar). No status, topo e rodapé têm folga porque o WhatsApp cobre essas faixas.
+- **Reunião, Treinamento e Evento:** chamada, assunto, para quem, data, horário de início e término, local, pauta (um item por linha) e observação (ex.: confirmar presença).
+- **Aniversário:** nome, setor, data, mensagem e foto opcional. A foto **não** fica salva no navegador, para não aparecer por engano no cartão seguinte; ao recarregar a página, envie de novo.
+- **Aniversariantes do mês:** uma pessoa por linha, `dia - nome - setor` (ex.: `05 - Maria da Silva - Montagem`). Pode colar direto do Excel (colunas separadas por tabulação); a data pode vir como `05`, `05/11` ou `05/11/1990` (vale só o dia), e a linha de cabeçalho é ignorada. A lista sai em ordem de dia; com mais de 7 pessoas, em 2 colunas. Data, horário e local da comemoração são opcionais.
+- **Texto que não cabe:** a arte diminui tudo junto até caber. Se a letra ficar abaixo de 70% do tamanho normal, aparece o aviso; com muitos aniversariantes, prefira o Status ou o Mural.
+- **Salvar:** igual à vaga (Salvar as 3 artes, Só [formato], Copiar texto), com pasta própria: no app instalado, a pasta escolhida para convites é lembrada separada da de vagas. Cada convite ganha uma pasta com o nome dele.
+- **Nome do arquivo:** título + data, para a reunião desta semana não substituir a da semana passada. Ex.: `Reunião de resultados - 13-11-2026 - Post.png`, `Aniversário Maria da Silva - Mural A4.png`.
+- **Copiar texto:** monta a mensagem com data por extenso, horário, local e pauta, com emojis, para mandar junto com a arte no WhatsApp ou no e-mail.
+- **Adicionar à agenda:** botão em "Quando e onde" (Reunião, Treinamento, Evento e comemoração dos Aniversariantes). Gera um arquivo `.ics` com título, data, horário, local, pauta e lembrete 30 minutos antes, que o Outlook, o Google Agenda e o celular abrem como compromisso.
+  - **O que ele não faz:** não envia convite nem colhe confirmação de presença. Para isso, quem organiza abre o arquivo no Outlook e convida os participantes por lá. Também dá para anexar o arquivo no e-mail ou no WhatsApp.
+  - **Regras:** sem término, o compromisso fica com 1 hora. Término antes do início (ex.: 20h às 1h) termina no dia seguinte. Sem horário, vira compromisso de dia inteiro. A mensagem ao lado do botão avisa qual regra foi usada.
+  - **Horário:** gravado em UTC a partir do fuso do computador que gerou o arquivo. O relógio desse computador precisa estar no fuso da fábrica.
+  - **Mesmo convite, mesmo identificador** (tipo + título + data): mudar só o horário e mandar de novo tende a atualizar o compromisso em vez de duplicar, mas isso depende do calendário de quem recebe. Mudou o dia: é um compromisso novo; peça para apagarem o antigo.
+  - **Google Agenda no computador:** o arquivo não abre sozinho; use Configurações › Importar e exportar › Importar.
+- **Logomarca:** a mesma da aba Vagas (Enviar logomarca, na aba Vagas, vale para as duas).
+- **Abrir direto numa aba:** a última aba usada é lembrada. O endereço com `#vagas` ou `#convites` abre direto nela; no app instalado, clique com o botão direito no ícone para escolher.
+- **Mudar textos de exemplo ou incluir um tipo:** constante `TIPOS_CV` no `index.html` (o ícone novo vai em `ICONES`).
 
 ## Sugestão de conteúdo por cargo
 Ao digitar o **Cargo**, o app preenche Requisitos, Diferencial e Principais atividades.
@@ -66,6 +89,8 @@ A versão fica em um lugar só: a constante `VERSAO`, no `index.html`. Ela apare
 Ao publicar uma mudança, aumente a versão (ex.: `1.1.0` → `1.2.0`). O `sw.js` lê esse número e renova a cópia offline sozinho. Não é preciso editar o `sw.js`.
 
 ### Histórico
+- **1.7.0**: botão Adicionar à agenda nos convites (arquivo `.ics` para Outlook, Google Agenda e celular, com lembrete 30 minutos antes).
+- **1.6.0**: aba Convites (reunião, treinamento, evento, aniversário e aniversariantes do mês) com artes de post, status e mural A4, texto para copiar e pasta própria; abas Vagas e Convites no topo, com a última aberta lembrada.
 - **1.5.1**: Salvar as 3 artes cria uma pasta com o nome da vaga dentro da pasta escolhida.
 - **1.5.0**: botão Salvar as 3 artes (pasta lembrada no app instalado; compartilhar as 3 no celular); botão Copiar legenda com hashtags geradas do cargo e da cidade; aviso de texto que não coube em algum formato.
 - **1.4.1**: a lista de cargos mostra todos ao clicar no campo, mesmo com um cargo já preenchido (antes era preciso apagar o campo).
