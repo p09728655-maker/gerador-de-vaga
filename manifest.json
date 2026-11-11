@@ -1,7 +1,7 @@
 {
   "name": "Gerador de Vagas Patrimar",
   "short_name": "Vagas Patrimar",
-  "description": "Gera anúncios de vagas no padrão Patrimar para Instagram, LinkedIn e status do WhatsApp. Funciona sem internet.",
+  "description": "Gera anúncios de vagas e convites (reuniões, treinamentos, eventos e aniversários) no padrão Patrimar. Funciona sem internet.",
   "lang": "pt-BR",
   "dir": "ltr",
   "start_url": "./",
@@ -18,5 +18,9 @@
   "screenshots": [
     {"src": "screenshot-celular.webp", "sizes": "780x1688", "type": "image/webp", "form_factor": "narrow", "label": "Formulário da vaga com a prévia da arte no celular"},
     {"src": "screenshot-computador.webp", "sizes": "1920x1200", "type": "image/webp", "form_factor": "wide", "label": "Formulário da vaga e prévia da arte no computador"}
+  ],
+  "shortcuts": [
+    {"name": "Vagas", "url": "./#vagas", "icons": [{"src": "icon-192.png", "sizes": "192x192", "type": "image/png"}]},
+    {"name": "Convites", "url": "./#convites", "icons": [{"src": "icon-192.png", "sizes": "192x192", "type": "image/png"}]}
   ]
 }

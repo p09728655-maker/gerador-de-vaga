@@ -2,7 +2,7 @@
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Gerador de Vagas Patrimar</title>
 <meta name="theme-color" content="#7B2225">
-<meta name="description" content="Gera anúncios de vagas no padrão Patrimar para Instagram, LinkedIn e status do WhatsApp.">
+<meta name="description" content="Gera anúncios de vagas e convites (reuniões, treinamentos, eventos e aniversários) no padrão Patrimar.">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Vagas Patrimar">
@@ -59,7 +59,7 @@ legend{font:700 16px var(--titulo);color:var(--acento);padding:0 6px}
 label{display:grid;gap:4px;font-weight:500;font-size:14px;min-width:0}
 label small,.nota{font-weight:400;color:var(--mudo);font-size:13px}
 .rot small{margin-left:4px}
-input[type=text],input[type=email],input[type=tel],input[type=password],textarea{width:100%;font:inherit;font-weight:400;font-size:15px;color:var(--fg);background:var(--bg);border:1px solid var(--linha);border-radius:6px;padding:9px 10px}
+input[type=text],input[type=email],input[type=tel],input[type=password],input[type=date],input[type=time],textarea{width:100%;font:inherit;font-weight:400;font-size:15px;color:var(--fg);background:var(--bg);border:1px solid var(--linha);border-radius:6px;padding:9px 10px}
 textarea{resize:vertical;min-height:72px;line-height:1.4}
 :is(input,textarea,button,select):focus-visible{outline:2px solid var(--acento);outline-offset:1px}
 .duas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
@@ -102,6 +102,21 @@ input[type=file]:focus-visible+.bt{outline:2px solid var(--acento)}
 .ia-msg:empty{display:none}
 .dlg-bts{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between}
 .acoes-bts{display:flex;flex-wrap:wrap;gap:8px}
+/* Abas do topo: Vagas e Convites */
+.modos{display:inline-grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:3px;background:var(--sup);border:1px solid var(--linha);border-radius:8px;padding:3px}
+.modo{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:6px 20px;border:0;border-radius:6px;background:transparent;color:var(--fg);font:500 15px var(--texto);cursor:pointer}
+.modo:hover{color:var(--acento)}
+.modo[aria-selected=true]{background:var(--acento);color:var(--sobre);font-weight:700}
+.modo svg{flex:none}
+@media (max-width:560px){.modos{width:100%}}
+/* Convites: tipo de convite */
+.tipos{display:flex;flex-wrap:wrap;gap:6px}
+.tipo{position:relative;display:inline-flex;align-items:center;min-height:40px;padding:7px 14px;border:1px solid var(--linha);border-radius:999px;background:var(--bg);font-weight:500;font-size:14px;cursor:pointer}
+.tipo:hover{border-color:var(--acento)}
+.tipo input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.tipo:has(input:checked){background:var(--acento);border-color:var(--acento);color:var(--sobre);font-weight:700}
+.tipo:has(input:focus-visible){outline:2px solid var(--acento);outline-offset:2px}
+input[type=date],input[type=time]{min-height:40px}
 /* Lista de cargos (campo Cargo) */
 .campo{display:grid;gap:4px;min-width:0}
 .combo{position:relative;min-width:0}
@@ -125,7 +140,7 @@ input[type=file]:focus-visible+.bt{outline:2px solid var(--acento)}
   .form{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;min-height:0}
   .col{display:flex;flex-direction:column;gap:12px;min-height:0;overflow:auto;padding:2px}
   fieldset{padding:8px 14px 12px;gap:10px}
-  input[type=text],input[type=email],input[type=tel],input[type=password],textarea{padding:7px 10px}
+  input[type=text],input[type=email],input[type=tel],input[type=password],input[type=date],input[type=time],textarea{padding:7px 10px}
   .benef{gap:4px 12px}
   .cresce{flex:1 1 auto;display:flex;flex-direction:column}
   .cresce>label{display:flex;flex-direction:column;flex:var(--p,1) 1 0}
@@ -144,16 +159,20 @@ input[type=file]:focus-visible+.bt{outline:2px solid var(--acento)}
 <div class="pag">
   <header class="topo">
     <div>
-      <h1>Gerador de Vagas</h1>
-      <p class="sub">Preencha a vaga e baixe a arte no padrão Patrimar para cada rede.</p>
+      <h1 id="titulo">Gerador de Vagas</h1>
+      <p class="sub" id="subtitulo">Preencha a vaga e baixe a arte no padrão Patrimar para cada rede.</p>
     </div>
+    <nav class="modos" role="tablist" aria-label="O que gerar" id="modos">
+      <button type="button" class="modo" role="tab" id="modo_vagas" aria-controls="appVagas" aria-selected="true"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 7h16v13H4zM9 7V4h6v3M4 12h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>Vagas</button>
+      <button type="button" class="modo" role="tab" id="modo_convites" aria-controls="appConvites" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M3 6h18v13H3zM3 7l9 7 9-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>Convites</button>
+    </nav>
     <button type="button" class="bt instalar" id="instalar" hidden>
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M5 21h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Instalar aplicativo
     </button>
     <p id="msgApp" role="status"></p>
   </header>
-  <div class="grade">
+  <div class="grade" id="appVagas" role="tabpanel" aria-labelledby="modo_vagas">
     <form class="form" id="form" autocomplete="off">
      <div class="col">
       <fieldset>
@@ -214,6 +233,61 @@ input[type=file]:focus-visible+.bt{outline:2px solid var(--acento)}
         <button type="button" class="bt" id="copiaLeg">Copiar legenda</button>
       </div>
       <div class="msg" id="msg" role="status"></div>
+    </section>
+  </div>
+
+  <!-- Convites: reunião, treinamento, evento e aniversários. Cada tipo guarda o próprio texto. -->
+  <div class="grade" id="appConvites" role="tabpanel" aria-labelledby="modo_convites" hidden>
+    <form class="form" id="formCv" autocomplete="off">
+     <div class="col">
+      <fieldset>
+        <legend>Tipo de convite</legend>
+        <div class="tipos" id="cvTipos" role="radiogroup" aria-label="Tipo de convite"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Convite</legend>
+        <label data-campo="chamada"><span class="rot">Chamada <small>Frase de abertura, em letra cursiva</small></span><input type="text" id="cv_chamada" maxlength="40"></label>
+        <label data-campo="titulo"><span id="rot_titulo">Assunto</span><input type="text" id="cv_titulo" maxlength="60"></label>
+        <label data-campo="publico"><span id="rot_publico">Para quem</span><input type="text" id="cv_publico" maxlength="80"></label>
+        <label data-campo="obs"><span class="rot">Observação <small id="dica_obs">Ex.: confirme presença com o seu líder</small></span><input type="text" id="cv_obs" maxlength="90"></label>
+      </fieldset>
+      <fieldset id="cvQuando">
+        <legend id="rot_quando">Quando e onde</legend>
+        <div class="duas">
+          <label data-campo="data"><span id="rot_data">Data</span><input type="date" id="cv_data"></label>
+          <label data-campo="local">Local<input type="text" id="cv_local" maxlength="50"></label>
+        </div>
+        <div class="duas">
+          <label data-campo="inicio"><span id="rot_inicio">Início</span><input type="time" id="cv_inicio"></label>
+          <label data-campo="fim"><span class="rot">Término <small>Opcional</small></span><input type="time" id="cv_fim"></label>
+        </div>
+      </fieldset>
+     </div>
+     <div class="col">
+      <fieldset class="cresce">
+        <legend>Conteúdo</legend>
+        <label data-campo="nomes" style="--p:3"><span class="rot">Aniversariantes <small>Um por linha: dia - nome - setor. Pode colar do Excel.</small></span><textarea id="cv_nomes" rows="6"></textarea></label>
+        <label data-campo="texto" style="--p:2"><span class="rot"><span id="rot_texto">Pauta</span> <small id="dica_texto">Um item por linha</small></span><textarea id="cv_texto" rows="4"></textarea></label>
+      </fieldset>
+      <fieldset data-campo="foto">
+        <legend>Foto do aniversariante</legend>
+        <p class="nota" style="margin:0">Opcional. A foto não fica salva no navegador: ao recarregar a página, envie de novo.</p>
+        <div class="arq"><input type="file" id="cvArqFoto" accept="image/*"><label class="bt" for="cvArqFoto">Enviar foto</label><button type="button" class="bt" id="cvTiraFoto" hidden>Remover foto</button></div>
+      </fieldset>
+      <div class="acoes"><div class="acoes-bts"><button type="button" class="bt" id="cvNovo">Novo convite em branco</button></div><span class="versao" id="versaoCv"></span></div>
+     </div>
+    </form>
+
+    <section class="prev" aria-label="Prévia do convite">
+      <div class="abas" role="tablist" id="cvAbas"></div>
+      <div class="tela"><img id="cvPrev" alt="Prévia da arte do convite"></div>
+      <div class="aviso" id="cvAviso" hidden></div>
+      <div class="salvar">
+        <button type="button" class="bt pri" id="cvBaixar3">Salvar as 3 artes</button>
+        <button type="button" class="bt" id="cvBaixar">Só Post</button>
+        <button type="button" class="bt" id="cvCopia">Copiar texto</button>
+      </div>
+      <div class="msg" id="cvMsg" role="status"></div>
     </section>
   </div>
   <canvas id="tela" hidden></canvas>
@@ -289,7 +363,13 @@ const ICONES={
  zapBalao:{d:"M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2z"},
  zapFone:{d:"M9.1 7.5c-.2-.4-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.3.3-1 .9-1 2.2s1 2.6 1.1 2.7c.1.2 1.9 3 4.7 4.1 2.3.9 2.8.7 3.3.7.5-.1 1.6-.7 1.8-1.3.2-.6.2-1.2.2-1.3-.1-.1-.3-.2-.6-.3l-2-.9c-.3-.1-.5-.2-.7.1l-.9 1.1c-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.4-.5.3-.5c.1-.2 0-.3 0-.5z"},
  carta:{d:"M3 6h18v13H3zM3 7l9 7 9-7",traco:1},
- seta:{d:"M2 12h19M15 6l6 6-6 6",traco:1}
+ seta:{d:"M2 12h19M15 6l6 6-6 6",traco:1},
+ /* Convites */
+ calendario:{d:"M4 5h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM3 10h18M8 3v4M16 3v4",traco:1},
+ relogio:{d:"M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3.5 2",traco:1},
+ grupo:{d:"M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM1 20v-2c0-3 4-5 8-5s8 2 8 5v2zM17 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM17.6 13.1c2.9.3 5.4 1.9 5.4 4.4V20h-4v-2c0-1.9-.5-3.4-1.4-4.9z"},
+ capelo:{d:"M12 3 1 8.5 12 14l9-4.5V16h2V8.5zM5.5 12.2v3.9C7.2 17.9 9.5 19 12 19s4.8-1.1 6.5-2.9v-3.9L12 15.5z"},
+ taca:{d:"M7 3h10l-1 6a4 4 0 0 1-8 0zM12 13v7M8 21h8",traco:1}
 };
 
 const BENEFICIOS=[
@@ -321,7 +401,7 @@ const EXEMPLO={
 const CAMPOS=["cargo","local","chamada","requisitos","diferencial","atividades","extras","telefone","email"];
 const CHAVE="geradorVagas.v1";
 /* Versão do aplicativo: fonte única. Ao publicar mudança, aumente aqui; o sw.js renova o cache sozinho. */
-const VERSAO="1.5.1";
+const VERSAO="1.6.0";
 
 function ler(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
 function gravar(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
@@ -1019,7 +1099,7 @@ function montar(){
   b.setAttribute("aria-selected",k===formato);
   b.append(document.createTextNode(f.nome));
   const s=document.createElement("small");s.textContent=f.tam;b.append(s);
-  b.onclick=()=>{formato=k;document.querySelectorAll(".aba").forEach(x=>x.setAttribute("aria-selected",x===b));$("msg").textContent="";rotulos();render()};
+  b.onclick=()=>{formato=k;$("abas").querySelectorAll(".aba").forEach(x=>x.setAttribute("aria-selected",x===b));$("msg").textContent="";rotulos();render()};
   $("abas").append(b);
  });
  combo.ligar();preencher();listaCargos();
@@ -1127,15 +1207,15 @@ const pastaDB=(()=>{
   r.onupgradeneeded=()=>r.result.createObjectStore("kv");r.onsuccess=()=>ok(r.result);r.onerror=()=>er(r.error)});
  async function op(modo,fn){const db=await abrir();return new Promise((ok,er)=>{const t=db.transaction("kv",modo),r=fn(t.objectStore("kv"));
   t.oncomplete=()=>{db.close();ok(r.result)};t.onerror=t.onabort=()=>{db.close();er(t.error)}})}
- return{ler:()=>op("readonly",s=>s.get("pasta")).catch(()=>null),
-  gravar:h=>op("readwrite",s=>s.put(h,"pasta")).catch(()=>{}),
-  apagar:()=>op("readwrite",s=>s.delete("pasta")).catch(()=>{})};
+ return{ler:(k="pasta")=>op("readonly",s=>s.get(k)).catch(()=>null),
+  gravar:(h,k="pasta")=>op("readwrite",s=>s.put(h,k)).catch(()=>{}),
+  apagar:(k="pasta")=>op("readwrite",s=>s.delete(k)).catch(()=>{})};
 })();
-async function pastaParaSalvar(trocar){
- const h=trocar||!lembraPasta()?null:await pastaDB.ler();
+async function pastaParaSalvar(trocar,k="pasta",id="vagas-patrimar"){
+ const h=trocar||!lembraPasta()?null:await pastaDB.ler(k);
  if(h){try{let p=await h.queryPermission({mode:"readwrite"});if(p!=="granted")p=await h.requestPermission({mode:"readwrite"});if(p==="granted")return h}catch(e){}}
- const nova=await window.showDirectoryPicker({id:"vagas-patrimar",mode:"readwrite",startIn:"pictures"});
- if(lembraPasta())await pastaDB.gravar(nova);return nova;
+ const nova=await window.showDirectoryPicker({id,mode:"readwrite",startIn:"pictures"});
+ if(lembraPasta())await pastaDB.gravar(nova,k);return nova;
 }
 /* As 3 artes ficam guardadas enquanto nada mudar: um segundo clique (ex.: depois de um cancelamento) é imediato */
 let artes3=null;
@@ -1221,10 +1301,479 @@ async function copiaLegenda(){
  const t=legenda(),msg=$("msg");
  try{await navigator.clipboard.writeText(t);msg.textContent="Legenda copiada. É só colar no post."}
  catch(e){/* sem acesso à área de transferência: mostra o texto para copiar à mão */
-  const d=$("dlgLeg"),ta=$("legTxt");ta.value=t;
+  const d=$("dlgLeg"),ta=$("legTxt");$("legTitulo").textContent="Legenda do post";ta.value=t;
   if(typeof d.showModal==="function"){if(!d.open)d.showModal()}else d.setAttribute("open","");
   ta.focus();ta.select();msg.textContent="";
  }
+}
+
+/* ===== Convites: reunião, treinamento, evento, aniversário e aniversariantes do mês =====
+   Aba separada da vaga, com formulário, prévia e botões de salvar próprios. A logomarca é a mesma da vaga.
+   Cada tipo guarda o próprio texto neste navegador: trocar de tipo não apaga o que foi digitado no outro.
+   Formatos: post 4:5 (WhatsApp e e-mail), status 9:16 e mural A4 (1240×1754 = A4 a 150 dpi, para imprimir).
+   No status, topo e rodapé ficam com folga porque o WhatsApp cobre essas faixas com o nome e a caixa de resposta. */
+const FORMATOS_CV={
+ post:{nome:"Post",tam:"WhatsApp 4:5",sufixo:"Post",W:1080,H:1350,mx:70,topo:62,rodH:112,rodC:56,logoW:330,sMax:1},
+ status:{nome:"Status",tam:"WhatsApp 9:16",sufixo:"Status WhatsApp",W:1080,H:1920,mx:70,topo:190,rodH:250,rodC:84,logoW:360,sMax:1.15},
+ mural:{nome:"Mural",tam:"A4 para imprimir",sufixo:"Mural A4",W:1240,H:1754,mx:80,topo:70,rodH:120,rodC:60,logoW:340,sMax:1.1}
+};
+const EVENTO_CV=["chamada","titulo","publico","obs","data","local","inicio","fim","texto"];
+/* Tipos de convite. campos: o que aparece no formulário e na arte. lista: texto em tópicos (um por linha) ou mensagem corrida.
+   ex: texto de exemplo do primeiro uso. Para incluir um tipo, acrescente uma entrada e um ícone em ICONES. */
+const TIPOS_CV={
+ reuniao:{nome:"Reunião",ic:"grupo",campos:EVENTO_CV,lista:true,para:true,dicaObs:"Ex.: confirme presença com o seu líder",
+  rot:{titulo:"Assunto",publico:"Para quem",texto:"Pauta",data:"Data",inicio:"Início",quando:"Quando e onde"},
+  ex:{chamada:"Convite",titulo:"Reunião de resultados",publico:"Líderes de produção, PCP e qualidade",inicio:"08:00",fim:"09:00",local:"Sala de reuniões",
+   texto:"Resultados de produção do mês;\nCumprimento do plano e atrasos;\nPrioridades da próxima semana.",obs:"Sua presença é importante. Chegue no horário."}},
+ treinamento:{nome:"Treinamento",ic:"capelo",campos:EVENTO_CV,lista:true,para:true,dicaObs:"Ex.: leve caneta e chegue 5 minutos antes",
+  rot:{titulo:"Tema",publico:"Para quem",texto:"Conteúdo",data:"Data",inicio:"Início",quando:"Quando e onde"},
+  ex:{chamada:"Convite",titulo:"Treinamento de segurança no trabalho",publico:"Operadores de máquinas",inicio:"14:00",fim:"16:00",local:"Refeitório",
+   texto:"Uso correto dos EPIs;\nSegurança em máquinas e equipamentos;\nO que fazer em caso de acidente.",obs:"Leve caneta e chegue 5 minutos antes."}},
+ evento:{nome:"Evento",ic:"taca",campos:EVENTO_CV,lista:true,para:true,dicaObs:"Ex.: confirme presença até sexta-feira",
+  rot:{titulo:"Nome do evento",publico:"Para quem",texto:"Programação",data:"Data",inicio:"Início",quando:"Quando e onde"},
+  ex:{chamada:"Você está convidado!",titulo:"Confraternização de fim de ano",publico:"Todos os colaboradores",inicio:"18:00",fim:"",local:"Refeitório",
+   texto:"Jantar;\nSorteio de brindes;\nHomenagem por tempo de casa.",obs:"Confirme sua presença com o seu líder."}},
+ aniversario:{nome:"Aniversário",ic:"bolo",campos:["chamada","titulo","publico","obs","data","texto","foto"],lista:false,para:false,dicaObs:"Ex.: bolo às 15h no refeitório",
+  rot:{titulo:"Nome do aniversariante",publico:"Setor",texto:"Mensagem",data:"Data do aniversário",inicio:"Início",quando:"Data"},
+  ex:{chamada:"Feliz aniversário!",titulo:"Maria da Silva",publico:"Montagem",texto:"Desejamos muita saúde, alegria e conquistas. Obrigado por fazer parte da nossa história!"}},
+ aniversariantes:{nome:"Aniversariantes do mês",ic:"presente",campos:["chamada","titulo","obs","nomes","texto","data","local","inicio"],lista:false,para:false,dicaObs:"Ex.: venha comemorar com a gente",
+  rot:{titulo:"Título",publico:"",texto:"Mensagem",data:"Data",inicio:"Horário",quando:"Comemoração (opcional)"},
+  ex:{chamada:"Parabéns!",nomes:"05 - Maria da Silva - Montagem\n12 - João Souza - Usinagem\n18 - Ana Paula Lima - Pintura\n27 - Carlos Pereira - Expedição",texto:"Muita saúde, alegria e conquistas para vocês!"}}
+};
+const CAMPOS_CV=["chamada","titulo","publico","obs","data","local","inicio","fim","texto","nomes"];
+const CHAVE_CV="geradorVagas.convites";
+const DIAS_SEM=["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"];
+const MESES=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const dois=n=>String(n).padStart(2,"0");
+const isoDia=d=>`${d.getFullYear()}-${dois(d.getMonth()+1)}-${dois(d.getDate())}`;
+/* "2026-11-13" → "Sexta-feira, 13 de novembro" (sem o ano). A data é lida no horário local, sem risco de voltar um dia pelo fuso. */
+function dataLonga(iso,semana){
+ const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||"");if(!m)return"";
+ const d=new Date(+m[1],+m[2]-1,+m[3]),dia=+m[3];
+ return(semana?DIAS_SEM[d.getDay()]+", ":"")+(dia===1?"1º":dia)+" de "+MESES[+m[2]-1];
+}
+const hora=t=>{const m=/^(\d{1,2}):(\d{2})/.exec(t||"");return m?`${+m[1]}h${m[2]==="00"?"":m[2]}`:""};
+function horario(a,b){const x=hora(a),y=hora(b);return x&&y?`${x} às ${y}`:x?`Às ${x}`:""}
+/* Aniversariantes: uma pessoa por linha, "dia - nome - setor", em qualquer ordem. Aceita tabulação (colado do Excel), ";" e "|".
+   O dia pode vir como 05, 05/11 ou 05/11/1990: vale só o dia. Linha de cabeçalho (Dia, Nome) é ignorada. Ordena pelo dia. */
+function aniversariantesDe(t){
+ const DIA=/^(\d{1,2})(?:[\/.]\d{1,2}(?:[\/.]\d{2,4})?)?$/;
+ return itens(t).map(l=>{
+  let partes=l.split(/\t|\s+[-–—]\s+|\s*[;|]\s*/).map(x=>x.trim()).filter(Boolean);
+  const m0=/^(\d{1,2}(?:[\/.]\d{1,2}(?:[\/.]\d{2,4})?)?)\s+(.+)$/.exec(partes[0]||"");
+  if(m0&&!partes.some(p=>DIA.test(p)))partes=[m0[1],m0[2],...partes.slice(1)];
+  let dia="";const resto=[];
+  for(const p of partes){const m=DIA.exec(p);if(!dia&&m&&+m[1]>=1&&+m[1]<=31)dia=dois(+m[1]);else resto.push(p)}
+  return{dia,nome:resto[0]||"",setor:resto.slice(1).join(" - ")};
+ }).filter(x=>x.nome&&!(!x.dia&&/^(dia|data|nome)$/i.test(x.nome))).sort((a,b)=>(a.dia||"99").localeCompare(b.dia||"99"));
+}
+/* Quebra o título em 2 ou 3 linhas de largura parecida. Com aceitaRuim=false, nunca termina linha em "de", "da", "e"...
+   (é melhor diminuir a letra ou usar 3 linhas). Devolve null se não couber. */
+function equilibra(c,txt,larg,nmax,aceitaRuim){
+ const P=String(txt).trim().split(/\s+/).filter(Boolean),w=a=>c.measureText(a).width;
+ if(!P.length)return[""];
+ if(w(P.join(" "))<=larg)return[P.join(" ")];
+ const ruim=/^(DE|DA|DO|DAS|DOS|E|EM|A|O|AS|OS|NA|NO|NAS|NOS|PARA|COM|AO|À)$/i;
+ let melhor=null;
+ const tenta=cs=>{const L=[];let i=0;for(const k of[...cs,P.length]){L.push(P.slice(i,k).join(" "));i=k}
+  const m=Math.max(...L.map(w)),ruins=cs.filter(k=>ruim.test(P[k-1])).length;if(m>larg||(ruins&&!aceitaRuim))return;
+  const custo=m+ruins*larg;
+  if(!melhor||custo<melhor.custo)melhor={custo,L}};
+ for(let i=1;i<P.length;i++)tenta([i]);
+ if(!melhor&&nmax>=3)for(let i=1;i<P.length;i++)for(let j=i+1;j<P.length;j++)tenta([i,j]);
+ return melhor&&melhor.L;
+}
+/* Confete dos aniversários: sempre no mesmo lugar (sorteio com semente fixa) e só nas laterais, longe do texto */
+function confete(c,W,H,u){
+ let x=20261111;const r=()=>(x=(x*16807)%2147483647)/2147483647;
+ const cores=[COR.ouro,COR.bordo,COR.ouroCl];
+ for(let i=0;i<54;i++){
+  const px=i%2?W-r()*W*.17:r()*W*.17,py=30*u+r()*H*.5;
+  c.save();c.globalAlpha=.45+r()*.4;c.fillStyle=cores[i%3];c.translate(px,py);c.rotate(r()*Math.PI);
+  if(i%4===0){c.beginPath();c.arc(0,0,(4+r()*4)*u,0,7);c.fill()}
+  else c.fillRect(-6*u,-2.5*u,(10+r()*10)*u,(4+r()*3)*u);
+  c.restore();
+ }
+}
+/* Arte do convite. Monta os blocos na ordem do tipo, diminui tudo junto até caber e centraliza na vertical. */
+function desenhaConvite(c,e,f,foto){
+ const{W,H}=f,u=W/1080,tp=TIPOS_CV[e.tipo]||TIPOS_CV.reuniao,tem=k=>tp.campos.includes(k),txt=k=>tem(k)?String(e[k]||"").trim():"";
+ const aniv=e.tipo==="aniversario",MUDO="#5F5859";
+ c.setTransform(1,0,0,1,0,0);c.globalAlpha=1;c.imageSmoothingEnabled=true;c.imageSmoothingQuality="high";
+ c.textAlign="left";c.textBaseline="alphabetic";
+ const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,"#FFFFFF");g.addColorStop(.55,"#FFFFFF");g.addColorStop(1,COR.fim);
+ c.fillStyle=g;c.fillRect(0,0,W,H);
+ const filete=y=>{const go=c.createLinearGradient(0,0,W,0);go.addColorStop(0,"rgba(205,170,60,0)");go.addColorStop(.5,COR.ouro);go.addColorStop(1,"rgba(205,170,60,0)");
+  c.fillStyle=go;c.fillRect(0,y,W,Math.max(2,Math.round(4*u)))};
+ const fx=Math.round(14*u);c.fillStyle=COR.bordo;c.fillRect(0,0,W,fx);filete(fx);
+ if(aniv||e.tipo==="aniversariantes")confete(c,W,H,u);
+ /* Rodapé */
+ const rh=Math.round(f.rodH*u),ry=H-rh;
+ const gr=c.createLinearGradient(0,ry,0,H);gr.addColorStop(0,COR.bordo);gr.addColorStop(1,COR.bordoEsc);
+ c.fillStyle=gr;c.fillRect(0,ry,W,rh);filete(ry-Math.round(4*u));
+ {const t="Juntos construímos grandes histórias!";let fs=44*u;c.font=`${fs}px ${FT.esc}`;
+  while(c.measureText(t).width>W-160*u&&fs>18){fs-=1;c.font=`${fs}px ${FT.esc}`}
+  c.fillStyle=COR.branco;c.textAlign="center";c.textBaseline="middle";c.fillText(t,W/2,ry+f.rodC*u);c.textBaseline="alphabetic";c.textAlign="left"}
+
+ const mx=Math.round(f.mx*u),larg=W-2*mx,y0=Math.round(f.topo*u),y1=ry-Math.round(34*u);
+ const centro=(L,fonte,cor,lh,dy)=>y=>{c.font=fonte;c.fillStyle=cor;c.textAlign="center";L.forEach((l,i)=>c.fillText(l,W/2,y+dy+i*lh));c.textAlign="left"};
+ const linhas=(t,fonte,w,max)=>{c.font=fonte;const L=String(t).split("\n").flatMap(p=>p.trim()?quebra(c,p.trim(),w):[]);return{L:L.slice(0,max),cortou:L.length>max}};
+ const pilula=(t,ic,ph)=>{const fs=ph*.5;c.font=`700 ${fs}px ${FT.txt}`;const w=c.measureText(t).width+ph*1.95;
+  return{h:ph*1.44,draw:y=>cabecalhoBloco(c,t,ic,(W-w)/2+ph*.1,y+ph*.22,ph,fs)}};
+ function blocos(s){
+  const b={};
+  if(imgLogo){const r=imgLogo.naturalHeight/imgLogo.naturalWidth;let lw=f.logoW*u*s,lh=lw*r;const mh=150*u*s;if(lh>mh){lh=mh;lw=lh/r}
+   b.logo={h:lh,draw:y=>c.drawImage(imgLogo,(W-lw)/2,y,lw,lh)}}
+  /* Selo: ícone do tipo num círculo; no aniversário, a foto da pessoa */
+  {const comFoto=aniv&&foto,d=Math.round((comFoto?380:aniv?190:136)*u*s),an=Math.max(3,Math.round((comFoto?10:6)*u*s));
+   b.selo={h:d+an*2,draw:y=>{const cx=W/2,cy=y+an+d/2;
+    c.fillStyle=COR.ouro;c.beginPath();c.arc(cx,cy,d/2+an,0,7);c.fill();
+    c.save();c.beginPath();c.arc(cx,cy,d/2,0,7);c.clip();
+    if(comFoto){const k=Math.max(d/foto.naturalWidth,d/foto.naturalHeight),iw=foto.naturalWidth*k,ih=foto.naturalHeight*k;
+     c.drawImage(foto,cx-iw/2,cy-d/2-(ih-d)*.3,iw,ih)}
+    else{c.fillStyle=COR.bordo;c.fillRect(cx-d,cy-d,2*d,2*d);icone(c,tp.ic,cx,cy,d*.56,COR.branco)}
+    c.restore()}}}
+  const ch=txt("chamada");
+  if(ch){const fs=(aniv?86:58)*u*s,fo=`${fs}px ${FT.esc}`,r=linhas(ch,fo,larg,2),lh=fs*1.2;
+   b.chamada={h:r.L.length*lh,cortou:r.cortou,draw:centro(r.L,fo,COR.bordo,lh,fs*.92)}}
+  const ti=txt("titulo");
+  if(ti){const T=ti.toUpperCase(),max=(aniv?80:90)*u*s,min=40*u*s;let fs=max,L=null,cortou=false;
+   for(const aceita of[false,true]){for(fs=max;fs>=min;fs-=2*u){c.font=`700 ${fs}px ${FT.tit}`;L=equilibra(c,T,larg,fs<=max*.8?3:2,aceita);if(L)break}if(L)break}
+   if(!L){fs=min;const r=linhas(T,`700 ${fs}px ${FT.tit}`,larg,3);L=r.L;cortou=r.cortou}
+   const lh=fs*1.02;
+   b.titulo={h:L.length*lh,cortou,draw:centro(L,`700 ${fs}px ${FT.tit}`,COR.bordo,lh,fs*.8)}}
+  const pu=txt("publico");
+  if(pu){const fs=32*u*s,fo=`500 ${fs}px ${FT.txt}`,r=linhas((tp.para?"Para: ":"")+pu,fo,larg,2),lh=fs*1.3;
+   b.publico={h:r.L.length*lh,cortou:r.cortou,draw:centro(r.L,fo,aniv?COR.bordo:COR.txt,lh,fs*.95)}}
+  if(aniv){const dt=dataLonga(e.data,false);if(dt)b.data=pilula(dt.toUpperCase(),"calendario",Math.round(52*u*s))}
+  /* Aniversariantes: dia no círculo, nome e setor. Mais de 7 pessoas: 2 colunas, lidas de cima para baixo. */
+  if(tem("nomes")){const P=aniversariantesDe(e.nomes);if(P.length){
+   const cols=P.length>7?2:1,pd=Math.round(22*u*s),gc=Math.round(24*u),rh2=Math.round(64*u*s),rg=Math.round(10*u*s);
+   const rows=Math.ceil(P.length/cols),cw=(larg-pd*2-gc*(cols-1))/cols,h=pd*2+rows*rh2+(rows-1)*rg;
+   const fsN=(cols>1?27:30)*u*s,fsS=(cols>1?20:22)*u*s,dc=Math.round(rh2*.9);
+   const cabe=(t,peso,fs,w)=>{let f2=fs;c.font=`${peso} ${f2}px ${FT.txt}`;
+    while(c.measureText(t).width>w&&f2>fs*.78){f2-=.5;c.font=`${peso} ${f2}px ${FT.txt}`}
+    if(c.measureText(t).width<=w)return t;let k=t.length;while(k>1&&c.measureText(t.slice(0,k)+"…").width>w)k--;return t.slice(0,k).trimEnd()+"…"};
+   /* Em 1 coluna, centraliza o grupo no cartão (com poucos nomes, sobraria um vazio à direita) */
+   let dx=0;if(cols===1){c.font=`700 ${fsN}px ${FT.txt}`;let tw=Math.max(...P.map(p=>c.measureText(p.nome).width));
+    c.font=`400 ${fsS}px ${FT.txt}`;tw=Math.max(tw,...P.map(p=>c.measureText(p.setor).width));dx=Math.max(0,(cw-(dc+14*u*s+tw))/2)}
+   b.nomes={h,draw:y=>{c.fillStyle=COR.card;ret(c,mx,y,larg,h,10*u);c.fill();
+    P.forEach((p,i)=>{const col=Math.floor(i/rows),row=i%rows,x=mx+pd+dx+col*(cw+gc),cy=y+pd+row*(rh2+rg)+rh2/2;
+     c.fillStyle=COR.bordo;c.beginPath();c.arc(x+dc/2,cy,dc/2,0,7);c.fill();
+     if(p.dia){c.fillStyle=COR.branco;c.font=`700 ${dc*.42}px ${FT.txt}`;c.textAlign="center";c.textBaseline="middle";c.fillText(p.dia,x+dc/2,cy+1);c.textAlign="left";c.textBaseline="alphabetic"}
+     else icone(c,"bolo",x+dc/2,cy,dc*.55,COR.branco);
+     const xt=x+dc+14*u*s,wt=x-dx+cw-xt;
+     c.fillStyle=COR.txt;const nm=cabe(p.nome,700,fsN,wt);
+     if(p.setor){c.fillText(nm,xt,cy-2*u*s);c.fillStyle=MUDO;const st=cabe(p.setor,400,fsS,wt);c.fillText(st,xt,cy+fsS*1.1)}
+     else c.fillText(nm,xt,cy+fsN*.35);
+    })}}}}
+  /* Data, horário e local. Nos aniversariantes, é a comemoração. */
+  if(!aniv){const I=[];const dt=tem("data")?dataLonga(e.data,true):"";if(dt)I.push(["calendario",dt]);
+   const hr=tem("inicio")?horario(e.inicio,tem("fim")?e.fim:""):"";if(hr)I.push(["relogio",hr]);
+   const lc=txt("local");if(lc)I.push(["pino",lc]);
+   if(I.length){
+    const pd=Math.round(24*u*s),ic=Math.round(56*u*s),gi=Math.round(18*u*s),fs=33*u*s,lh=fs*1.25,rg=Math.round(12*u*s),fo=`500 ${fs}px ${FT.txt}`;
+    const cab=e.tipo==="aniversariantes",hh=Math.round(44*u*s);
+    c.font=fo;const R=I.map(([icn,t])=>{const L=quebra(c,t,larg-pd*2-ic-gi).slice(0,2);return{icn,L,h:Math.max(ic,L.length*lh)}});
+    c.font=fo;const tw=Math.max(...R.flatMap(r=>r.L.map(l=>c.measureText(l).width))),gw=ic+gi+tw;
+    const topoCab=cab?hh*1.44+rg:0,h=pd*2+topoCab+R.reduce((a,r)=>a+r.h,0)+(R.length-1)*rg;
+    b.info={h,draw:y=>{c.fillStyle=COR.card;ret(c,mx,y,larg,h,10*u);c.fill();
+     let yy=y+pd;
+     if(cab){pilula("Comemoração","bolo",hh).draw(yy);yy+=topoCab}
+     const x0=mx+(larg-gw)/2;
+     for(const r of R){const cy=yy+r.h/2;
+      c.fillStyle=COR.bordo;c.beginPath();c.arc(x0+ic/2,cy,ic/2,0,7);c.fill();icone(c,r.icn,x0+ic/2,cy,ic*.58,COR.branco);
+      c.fillStyle=COR.txt;c.font=fo;c.textAlign="left";c.textBaseline="middle";
+      r.L.forEach((l,k)=>c.fillText(l,x0+ic+gi,cy+(k-(r.L.length-1)/2)*lh+1));c.textBaseline="alphabetic";
+      yy+=r.h+rg}}}}}
+  /* Pauta, conteúdo ou programação em tópicos; nos aniversários, mensagem corrida */
+  const tx=txt("texto");
+  if(tx&&tp.lista){const it=itens(tx);if(it.length){const fs=30*u*s,m=medeBlocos(c,[{n:tp.rot.texto,ic:"confere",itens:it}],larg,fs),bl=m.res[0];
+   b.texto={h:bl.h,draw:y=>{c.fillStyle=COR.card;ret(c,mx,y,larg,bl.h,10*u);c.fill();
+    let yc=y+m.pad*.75;cabecalhoBloco(c,bl.n,bl.ic,mx+22*u,yc,m.hh,fs*1.04);yc+=m.hh+fs*.5;
+    c.fillStyle=COR.txt;c.font=`400 ${fs}px ${FT.txt}`;c.textAlign="left";
+    for(const li of bl.li)li.forEach((l,i)=>{const by=yc+fs*.95;if(i===0){c.beginPath();c.arc(mx+m.pad+fs*.32,by-fs*.34,fs*.14,0,7);c.fill()}
+     c.fillText(l,mx+m.pad+m.rec,by);yc+=m.lh})}}}}
+  else if(tx){const fs=34*u*s,fo=`400 ${fs}px ${FT.txt}`,r=linhas(tx,fo,larg*.9,6),lh=fs*1.35;
+   b.texto={h:r.L.length*lh,cortou:r.cortou,draw:centro(r.L,fo,COR.txt,lh,fs*.95)}}
+  const ob=txt("obs");
+  if(ob){const fs=30*u*s,fo=`700 ${fs}px ${FT.txt}`,r=linhas(ob,fo,larg,3),lh=fs*1.3;
+   b.obs={h:r.L.length*lh,cortou:r.cortou,draw:centro(r.L,fo,COR.bordo,lh,fs*.95)}}
+  const ordem=aniv?["logo","chamada","selo","titulo","publico","data","texto","obs"]
+   :e.tipo==="aniversariantes"?["logo","selo","chamada","titulo","nomes","texto","info","obs"]
+   :["logo","selo","chamada","titulo","publico","info","texto","obs"];
+  return ordem.map(k=>b[k]).filter(Boolean);
+ }
+ const gap=s=>Math.round(26*u*s),disp=y1-y0;
+ const soma=(B,s)=>B.reduce((a,x)=>a+x.h,0)+Math.max(0,B.length-1)*gap(s);
+ let s=f.sMax,B=blocos(s);
+ while(soma(B,s)>disp&&s>.5){s=Math.max(.5,s-.03);B=blocos(s)}
+ /* Abaixo de 70% a letra fica pequena demais para ler no celular: avisa (ex.: muitos aniversariantes no post) */
+ const apertou=soma(B,s)>disp||B.some(x=>x.cortou)||s<.7;
+ const livre=Math.max(0,disp-soma(B,s)),n=B.length,extra=n>1?Math.min(livre/(n+1),60*u):0;
+ let y=y0+(livre-extra*(n-1))/2;
+ c.save();c.beginPath();c.rect(0,fx,W,ry-fx);c.clip();
+ for(const x of B){x.draw(Math.round(y));y+=x.h+gap(s)+extra}
+ c.restore();
+ return{apertou,escala:s};
+}
+
+const convites=(()=>{
+ const PASTA="pastaConvites",JANELA="convites-patrimar";
+ function exemplo(t){
+  const hoje=new Date(),am=new Date();am.setDate(am.getDate()+1);
+  const x=Object.assign({},TIPOS_CV[t].ex);
+  if(t==="aniversario")x.data=isoDia(hoje);
+  else if(t==="aniversariantes")x.titulo="Aniversariantes de "+MESES[hoje.getMonth()];
+  else x.data=isoDia(am);
+  return Object.fromEntries(CAMPOS_CV.map(k=>[k,typeof x[k]==="string"?x[k]:""]));
+ }
+ let S=ler(CHAVE_CV);
+ if(!S||typeof S!=="object"||Array.isArray(S))S={};
+ if(!TIPOS_CV[S.tipo])S.tipo="reuniao";
+ if(!FORMATOS_CV[S.formato])S.formato="post";
+ if(!S.porTipo||typeof S.porTipo!=="object"||Array.isArray(S.porTipo))S.porTipo={};
+ const dados=(t=S.tipo)=>{let d=S.porTipo[t];if(!d||typeof d!=="object")d=S.porTipo[t]=exemplo(t);return d};
+ const atual=()=>Object.assign({tipo:S.tipo},dados());
+ const salva=()=>gravar(CHAVE_CV,S);
+ const msg=t=>{$("cvMsg").textContent=t};
+ /* Foto do aniversariante: só na memória. Não fica guardada para não aparecer por engano no próximo cartão. */
+ let foto=null,fotoId=0;
+
+ const cv=document.createElement("canvas"),cx=cv.getContext("2d");
+ let agendado=false,url=null,blob=null,vez=0;
+ function render(){
+  if(agendado)return;agendado=true;
+  requestAnimationFrame(()=>{
+   agendado=false;if($("appConvites").hidden)return;
+   const f=FORMATOS_CV[S.formato];cv.width=f.W;cv.height=f.H;
+   const r=desenhaConvite(cx,atual(),f,foto);
+   const av=$("cvAviso");av.hidden=!r.apertou;
+   if(r.apertou)av.textContent="O texto não coube bem neste formato e a letra ficou pequena. Encurte o texto"+(S.formato==="post"?" ou use o Status ou o Mural, que têm mais espaço.":".");
+   const v=++vez;blob=null;
+   cv.toBlob(b=>{if(!b||v!==vez)return;blob=b;if(url)URL.revokeObjectURL(url);url=URL.createObjectURL(b);$("cvPrev").src=url},"image/png");
+  });
+ }
+ function preencher(){
+  const d=dados();CAMPOS_CV.forEach(k=>{$("cv_"+k).value=d[k]||""});
+  document.querySelectorAll("#cvTipos input").forEach(i=>{i.checked=i.value===S.tipo});
+ }
+ /* Mostra só os campos do tipo e troca os rótulos */
+ function ajusta(){
+  const tp=TIPOS_CV[S.tipo],ex=exemplo(S.tipo);
+  document.querySelectorAll("#formCv [data-campo]").forEach(el=>{el.hidden=!tp.campos.includes(el.dataset.campo)});
+  document.querySelectorAll("#cvQuando .duas").forEach(el=>{el.hidden=![...el.children].some(x=>!x.hidden)});
+  $("cvQuando").hidden=!["data","inicio","local"].some(k=>tp.campos.includes(k));
+  $("rot_titulo").textContent=tp.rot.titulo;$("rot_publico").textContent=tp.rot.publico;$("rot_texto").textContent=tp.rot.texto;
+  $("rot_data").textContent=tp.rot.data;$("rot_inicio").textContent=tp.rot.inicio;$("rot_quando").textContent=tp.rot.quando;
+  $("dica_texto").textContent=tp.lista?"Um item por linha":"Texto corrido";$("dica_obs").textContent=tp.dicaObs;
+  ["titulo","publico","local"].forEach(k=>{$("cv_"+k).placeholder=ex[k]?"Ex.: "+ex[k]:""});
+  $("cvTiraFoto").hidden=!foto;
+ }
+ function trocaTipo(t){if(!TIPOS_CV[t]||t===S.tipo)return;S.tipo=t;salva();preencher();ajusta();msg("");render()}
+
+ /* Nome do arquivo: título + data, para a reunião desta semana não substituir a da semana passada.
+    Ex.: "Reunião de resultados - 13-11-2026 - Post.png"; "Aniversário Maria da Silva - Status WhatsApp.png". */
+ const seguro=t=>String(t||"").normalize("NFC").replace(/[\\/:*?"<>|\u0000-\u001f]+/g," ").replace(/\s+/g," ").trim().slice(0,80).replace(/[. ]+$/,"");
+ function nomeBase(){
+  const e=atual(),tp=TIPOS_CV[e.tipo],ti=String(e.titulo||"").trim();
+  let n=e.tipo==="aniversario"?(ti?"Aniversário "+ti:"Aniversário"):(ti||tp.nome);
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(e.data||"");
+  if(m&&tp.lista)n+=` - ${m[3]}-${m[2]}-${m[1]}`;
+  return seguro(n)||"Convite Patrimar";
+ }
+ const nomeArq=k=>`${nomeBase()} - ${FORMATOS_CV[k].sufixo}.png`;
+ const nomePasta=()=>{const n=nomeBase();return/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(n)?n+" (convite)":n};
+ function rotulos(){
+  $("cvBaixar").textContent="Só "+FORMATOS_CV[S.formato].nome;
+  const t=()=>new File(["x"],"t.png",{type:"image/png"});
+  $("cvBaixar3").textContent=compartilhaVarios([t(),t(),t()])?"Compartilhar as 3 artes":usaPasta()?"Salvar as 3 artes":"Baixar as 3 artes";
+ }
+ /* Salvar só a arte da aba aberta: mesmo caminho da vaga (janela Salvar como no computador, compartilhar no celular) */
+ async function baixar(){
+  const bt=$("cvBaixar");msg("");
+  if(!blob){msg("A arte ainda está sendo gerada. Tente de novo em instantes.");return}
+  const b=blob,nome=nomeArq(S.formato);bt.disabled=true;
+  try{
+   if(window.claude&&window.claude.use){
+    const d=await window.claude.use("downloads");
+    if(!d){msg("Para salvar, clique com o botão direito na arte, ou segure o dedo sobre ela no celular.");return}
+    await d.save({filename:nome,data:b});msg("Arte salva: "+nome);return;
+   }
+   const arq=new File([b],nome,{type:"image/png"});
+   if(compartilha(arq)){await navigator.share({files:[arq]});msg("Arte pronta: "+nome);return}
+   if(salvaComo()){
+    try{const h=await window.showSaveFilePicker({suggestedName:nome,id:JANELA,startIn:"downloads",types:[{description:"Imagem PNG",accept:{"image/png":[".png"]}}]});
+     const w=await h.createWritable();await w.write(b);await w.close();msg("Arte salva: "+h.name);return}
+    catch(e){if(e&&e.name==="AbortError")throw e}/* sem permissão para a janela: segue no download comum */
+   }
+   const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=nome;a.click();
+   setTimeout(()=>URL.revokeObjectURL(a.href),4000);msg("Arte salva: "+nome);
+  }catch(e){
+   if(e&&(e.code==="declined"||e.name==="AbortError"))msg("Salvamento cancelado.");
+   else if(e&&e.code==="rate_limited")msg("Já existe uma confirmação aberta. Responda a ela e tente de novo.");
+   else msg("Não foi possível baixar aqui. Clique com o botão direito na arte, ou segure o dedo sobre ela no celular, para salvar.");
+  }finally{bt.disabled=false}
+ }
+ let artes=null;
+ async function geraArtes(){
+  const e=atual(),ch=JSON.stringify(e)+"|"+fotoId+"|"+(imgLogo?imgLogo.src.length:0);
+  if(artes&&artes.ch===ch)return artes;
+  const ks=Object.keys(FORMATOS_CV),apertou=[];
+  const blobs=await Promise.all(ks.map(k=>{
+   const f=FORMATOS_CV[k],c2=document.createElement("canvas");c2.width=f.W;c2.height=f.H;
+   if(desenhaConvite(c2.getContext("2d"),e,f,foto).apertou)apertou.push(f.nome);
+   return new Promise((ok,er)=>c2.toBlob(b=>b?ok(b):er(new Error("toBlob")),"image/png"));
+  }));
+  artes={ch,apertou,arqs:blobs.map((b,i)=>new File([b],nomeArq(ks[i]),{type:"image/png"}))};
+  return artes;
+ }
+ /* Salvar as 3 artes: mesmo funcionamento da vaga, mas com pasta própria (ex.: Convites › Reunião de resultados - 13-11-2026) */
+ async function baixarTodas(trocar){
+  const bt=$("cvBaixar3"),m=$("cvMsg");m.textContent="";bt.disabled=true;
+  let pasta=null;
+  try{
+   if(usaPasta()){
+    if(!lembraPasta())m.textContent="Escolha a pasta para as 3 artes.";
+    else if(trocar||!(await pastaDB.ler(PASTA)))m.textContent="Escolha ou crie uma pasta para os convites, por exemplo Convites. Os próximos vão direto para ela.";
+    pasta=await pastaParaSalvar(trocar,PASTA,JANELA);m.textContent=""}
+   const{arqs,apertou}=await geraArtes();
+   const aviso=apertou.length?` Atenção: o texto não coube em ${apertou.join(" e ")}; confira ${apertou.length>1?"essas artes":"essa arte"}.`:"";
+   if(window.claude&&window.claude.use){
+    const d=await window.claude.use("downloads");
+    if(!d){m.textContent="Para salvar, clique com o botão direito em cada arte, ou segure o dedo sobre ela no celular.";return}
+    for(const a of arqs)await d.save({filename:a.name,data:a});
+    m.textContent="3 artes salvas."+aviso;
+   }else if(pasta){
+    const sub=await pasta.getDirectoryHandle(nomePasta(),{create:true});
+    for(const a of arqs){const fh=await sub.getFileHandle(a.name,{create:true}),w=await fh.createWritable();await w.write(a);await w.close()}
+    m.textContent=`3 artes salvas em ${pasta.name} › ${sub.name}.${aviso}`;
+    if(lembraPasta()){const tb=document.createElement("button");tb.type="button";tb.className="bt mini";tb.textContent="Trocar pasta";tb.onclick=()=>baixarTodas(true);m.append(tb)}
+   }else if(compartilhaVarios(arqs)){
+    await navigator.share({files:arqs});m.textContent="Artes prontas."+aviso;
+   }else{
+    for(const a of arqs){const l=document.createElement("a");l.href=URL.createObjectURL(a);l.download=a.name;l.click();
+     setTimeout(()=>URL.revokeObjectURL(l.href),4000);await new Promise(r=>setTimeout(r,250))}
+    m.textContent="3 artes baixadas. Se o navegador perguntar, permita baixar vários arquivos."+aviso;
+   }
+  }catch(e){
+   const n=e&&e.name;
+   if(n==="AbortError"||(e&&e.code==="declined"))m.textContent="Salvamento cancelado.";
+   else if(n==="NotFoundError"&&pasta){await pastaDB.apagar(PASTA);m.textContent=`A pasta ${pasta.name} não foi encontrada. Clique de novo para escolher outra.`}
+   else if(n==="SecurityError"&&usaPasta())m.textContent="O navegador pediu um novo clique para abrir a pasta. Clique de novo em "+bt.textContent+".";
+   else if(n==="NotAllowedError")m.textContent="O navegador pediu um novo toque. Clique de novo em "+bt.textContent+".";
+   else if(e&&e.code==="rate_limited")m.textContent="Já existe uma confirmação aberta. Responda a ela e tente de novo.";
+   else m.textContent="Não foi possível salvar as 3 artes. Use o botão de uma arte por vez.";
+  }finally{bt.disabled=false}
+ }
+ /* Texto para mandar junto com a arte no WhatsApp ou no e-mail */
+ function texto(){
+  const e=atual(),tp=TIPOS_CV[e.tipo],tem=k=>tp.campos.includes(k),t=k=>tem(k)?String(e[k]||"").trim():"",l=[];
+  if(e.tipo==="aniversario"){
+   l.push(`🎉 ${t("chamada")||"Feliz aniversário!"}`);
+   if(t("titulo"))l.push(t("titulo")+(t("publico")?` (${t("publico")})`:""));
+   const dt=dataLonga(e.data,false);if(dt)l.push(`🎂 ${dt}`);
+  }else if(e.tipo==="aniversariantes"){
+   l.push(`🎉 ${[t("chamada"),t("titulo")].filter(Boolean).join(" ")||"Aniversariantes do mês"}`);
+   const P=aniversariantesDe(e.nomes);
+   if(P.length)l.push("",...P.map(x=>`🎂 ${x.dia?x.dia+" – ":""}${x.nome}${x.setor?` (${x.setor})`:""}`));
+  }else{
+   l.push(`📌 ${t("chamada")||"Convite"}: ${t("titulo")||tp.nome}`);
+   if(t("publico"))l.push(`Para: ${t("publico")}`);
+  }
+  const I=[];
+  if(e.tipo!=="aniversario"){
+   const dt=tem("data")?dataLonga(e.data,true):"";if(dt)I.push("📅 "+dt);
+   const hr=tem("inicio")?horario(e.inicio,tem("fim")?e.fim:""):"";if(hr)I.push("🕗 "+hr);
+   if(t("local"))I.push("📍 "+t("local"));
+  }
+  const corpo=[];
+  if(t("texto")){if(tp.lista)corpo.push("",tp.rot.texto+":",...itens(e.texto).map(x=>"• "+x.replace(/[;.]\s*$/,"")));else corpo.push("",t("texto"))}
+  const quando=I.length?["",...(e.tipo==="aniversariantes"?["Comemoração:"]:[]),...I]:[];
+  if(e.tipo==="aniversariantes")l.push(...corpo,...quando);else l.push(...quando,...corpo);
+  if(t("obs"))l.push("",t("obs"));
+  return l.join("\n");
+ }
+ async function copia(){
+  const t=texto();
+  try{await navigator.clipboard.writeText(t);msg("Texto copiado. É só colar no WhatsApp ou no e-mail, junto com a arte.")}
+  catch(e){/* sem acesso à área de transferência: mostra o texto para copiar à mão */
+   const d=$("dlgLeg"),ta=$("legTxt");$("legTitulo").textContent="Texto do convite";ta.value=t;
+   if(typeof d.showModal==="function"){if(!d.open)d.showModal()}else d.setAttribute("open","");
+   ta.focus();ta.select();msg("");
+  }
+ }
+ async function poeFoto(ev){
+  const a=ev.target.files[0];ev.target.value="";if(!a)return;
+  try{
+   const u=URL.createObjectURL(a);let c2;
+   try{const i=await carrega(u);
+    const k=Math.min(1,1200/Math.max(i.naturalWidth,i.naturalHeight));c2=document.createElement("canvas");
+    c2.width=Math.round(i.naturalWidth*k);c2.height=Math.round(i.naturalHeight*k);
+    const g=c2.getContext("2d");g.fillStyle="#FFFFFF";g.fillRect(0,0,c2.width,c2.height);g.drawImage(i,0,0,c2.width,c2.height);
+   }finally{URL.revokeObjectURL(u)}
+   foto=await carrega(c2.toDataURL("image/jpeg",.9));fotoId++;$("cvTiraFoto").hidden=false;msg("");render();
+  }catch(e){msg("Não consegui abrir essa imagem. Use um arquivo PNG ou JPG.")}
+ }
+ function ligar(){
+  $("cvTipos").replaceChildren(...Object.entries(TIPOS_CV).map(([k,t])=>{
+   const l=document.createElement("label"),i=document.createElement("input");l.className="tipo";
+   i.type="radio";i.name="cvTipo";i.value=k;l.append(i,document.createTextNode(t.nome));return l}));
+  $("cvAbas").replaceChildren(...Object.entries(FORMATOS_CV).map(([k,f])=>{
+   const b=document.createElement("button");b.type="button";b.className="aba";b.setAttribute("role","tab");
+   b.setAttribute("aria-selected",String(k===S.formato));b.append(document.createTextNode(f.nome));
+   const sm=document.createElement("small");sm.textContent=f.tam;b.append(sm);
+   b.onclick=()=>{S.formato=k;salva();$("cvAbas").querySelectorAll(".aba").forEach(x=>x.setAttribute("aria-selected",String(x===b)));msg("");rotulos();render()};
+   return b}));
+  preencher();ajusta();rotulos();
+  $("versaoCv").textContent="Versão "+VERSAO;
+  $("formCv").addEventListener("input",ev=>{
+   const t=ev.target;if(t.type==="file"||t.name==="cvTipo")return;
+   const d=dados();CAMPOS_CV.forEach(k=>{d[k]=$("cv_"+k).value});salva();render();
+  });
+  $("formCv").addEventListener("change",ev=>{if(ev.target.name==="cvTipo")trocaTipo(ev.target.value)});
+  $("formCv").addEventListener("submit",ev=>ev.preventDefault());
+  $("cvArqFoto").addEventListener("change",ev=>{ev.stopPropagation();poeFoto(ev)});
+  $("cvTiraFoto").onclick=()=>{foto=null;fotoId++;$("cvTiraFoto").hidden=true;render()};
+  $("cvNovo").onclick=()=>{
+   const ex=exemplo(S.tipo),d=Object.fromEntries(CAMPOS_CV.map(k=>[k,""]));
+   d.chamada=ex.chamada;if(S.tipo==="aniversariantes")d.titulo=ex.titulo;
+   S.porTipo[S.tipo]=d;if(S.tipo==="aniversario"){foto=null;fotoId++}
+   salva();preencher();ajusta();msg("");render();
+   $(S.tipo==="aniversariantes"?"cv_nomes":"cv_titulo").focus();
+  };
+  $("cvBaixar").onclick=baixar;
+  $("cvBaixar3").onclick=()=>baixarTodas(false);
+  $("cvCopia").onclick=copia;
+ }
+ return{ligar,render};
+})();
+
+/* Abas do topo: Vagas e Convites. A aba aberta fica lembrada neste navegador; o endereço #vagas ou #convites abre direto nela. */
+const MODOS={
+ vagas:{painel:"appVagas",h1:"Gerador de Vagas",sub:"Preencha a vaga e baixe a arte no padrão Patrimar para cada rede.",doc:"Gerador de Vagas Patrimar"},
+ convites:{painel:"appConvites",h1:"Gerador de Convites",sub:"Monte o convite de reunião, treinamento, evento ou aniversário e baixe a arte no padrão Patrimar.",doc:"Convites Patrimar"}
+};
+const CHAVE_MODO="geradorVagas.modo";
+function mudaModo(m,foco){
+ if(!MODOS[m])m="vagas";
+ Object.entries(MODOS).forEach(([k,x])=>{const on=k===m,b=$("modo_"+k);b.setAttribute("aria-selected",String(on));b.tabIndex=on?0:-1;$(x.painel).hidden=!on});
+ $("titulo").textContent=MODOS[m].h1;$("subtitulo").textContent=MODOS[m].sub;document.title=MODOS[m].doc;
+ gravar(CHAVE_MODO,m);
+ if(location.hash!=="#"+m){try{history.replaceState(null,"","#"+m)}catch(e){}}
+ if(foco)$("modo_"+m).focus();
+ if(m==="convites")convites.render();
+}
+function ligaModos(){
+ Object.keys(MODOS).forEach(k=>{$("modo_"+k).onclick=()=>mudaModo(k)});
+ $("modos").addEventListener("keydown",e=>{
+  if(!["ArrowLeft","ArrowRight","Home","End"].includes(e.key))return;e.preventDefault();
+  const ks=Object.keys(MODOS),i=ks.findIndex(k=>$("modo_"+k).getAttribute("aria-selected")==="true");
+  const n=e.key==="Home"?0:e.key==="End"?ks.length-1:(i+(e.key==="ArrowRight"?1:-1)+ks.length)%ks.length;
+  mudaModo(ks[n],true);
+ });
+ addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(MODOS[h])mudaModo(h)});
+ const h=location.hash.slice(1);mudaModo(MODOS[h]?h:ler(CHAVE_MODO));
 }
 
 /* Instalar como aplicativo: usa o pedido nativo do navegador quando existe; senão, mostra o passo a passo do aparelho */
@@ -1282,13 +1831,15 @@ if("serviceWorker" in navigator&&window.isSecureContext)navigator.serviceWorker.
  montar();
  ia.ligar();
  modelosArq.ligar();
+ convites.ligar();
+ ligaModos();
  rotulos();
  const salvaL=ler("geradorVagas.logo"),salvaF=ler("geradorVagas.foto");
  if(salvaL)$("tiraLogo").hidden=false;if(salvaF)$("tiraFoto").hidden=false;
  [imgLogo,imgFoto]=await Promise.all([carrega(salvaL||LOGO_PADRAO),carrega(salvaF||FOTO_PADRAO)]);
- render();
- try{await Promise.all([`700 40px Hind`,`600 40px Hind`,`400 20px Roboto`,`700 20px Roboto`,`20px "Kaushan Script"`].map(f=>document.fonts.load(f,"AÇãé")))}catch(e){}
- render();
+ render();convites.render();
+ try{await Promise.all([`700 40px Hind`,`600 40px Hind`,`400 20px Roboto`,`500 20px Roboto`,`700 20px Roboto`,`20px "Kaushan Script"`].map(f=>document.fonts.load(f,"AÇãé")))}catch(e){}
+ render();convites.render();
 })();
 </script>
 </body></html>
