@@ -117,6 +117,13 @@ input[type=file]:focus-visible+.bt{outline:2px solid var(--acento)}
 .tipo:has(input:checked){background:var(--acento);border-color:var(--acento);color:var(--sobre);font-weight:700}
 .tipo:has(input:focus-visible){outline:2px solid var(--acento);outline-offset:2px}
 input[type=date],input[type=time]{min-height:40px}
+/* Convites: botão Adicionar à agenda (.ics) */
+.agenda{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.bt.agenda-bt{display:inline-flex;align-items:center;gap:6px;min-height:40px;border-color:var(--acento);color:var(--acento);font-weight:700}
+.bt.agenda-bt:hover{background:var(--acento);color:var(--sobre)}
+.bt.agenda-bt:disabled{opacity:.6;cursor:wait}
+.agenda-msg{font-size:13px;color:var(--mudo);flex:1 1 220px}
+.agenda-msg:empty{display:none}
 /* Lista de cargos (campo Cargo) */
 .campo{display:grid;gap:4px;min-width:0}
 .combo{position:relative;min-width:0}
@@ -261,6 +268,7 @@ input[type=date],input[type=time]{min-height:40px}
           <label data-campo="inicio"><span id="rot_inicio">Início</span><input type="time" id="cv_inicio"></label>
           <label data-campo="fim"><span class="rot">Término <small>Opcional</small></span><input type="time" id="cv_fim"></label>
         </div>
+        <div class="agenda" data-campo="inicio"><button type="button" class="bt agenda-bt" id="cvAgenda" title="Gera um arquivo .ics para Outlook, Google Agenda e celular"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M4 5h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM3 10h18M8 3v4M16 3v4M12 13v5M9.5 15.5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Adicionar à agenda</button><span class="agenda-msg" id="cvAgendaMsg" role="status"></span></div>
       </fieldset>
      </div>
      <div class="col">
@@ -401,7 +409,7 @@ const EXEMPLO={
 const CAMPOS=["cargo","local","chamada","requisitos","diferencial","atividades","extras","telefone","email"];
 const CHAVE="geradorVagas.v1";
 /* Versão do aplicativo: fonte única. Ao publicar mudança, aumente aqui; o sw.js renova o cache sozinho. */
-const VERSAO="1.6.0";
+const VERSAO="1.7.0";
 
 function ler(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
 function gravar(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
@@ -1570,7 +1578,7 @@ const convites=(()=>{
   ["titulo","publico","local"].forEach(k=>{$("cv_"+k).placeholder=ex[k]?"Ex.: "+ex[k]:""});
   $("cvTiraFoto").hidden=!foto;
  }
- function trocaTipo(t){if(!TIPOS_CV[t]||t===S.tipo)return;S.tipo=t;salva();preencher();ajusta();msg("");render()}
+ function trocaTipo(t){if(!TIPOS_CV[t]||t===S.tipo)return;S.tipo=t;salva();preencher();ajusta();msg("");$("cvAgendaMsg").textContent="";render()}
 
  /* Nome do arquivo: título + data, para a reunião desta semana não substituir a da semana passada.
     Ex.: "Reunião de resultados - 13-11-2026 - Post.png"; "Aniversário Maria da Silva - Status WhatsApp.png". */
@@ -1715,6 +1723,75 @@ const convites=(()=>{
    foto=await carrega(c2.toDataURL("image/jpeg",.9));fotoId++;$("cvTiraFoto").hidden=false;msg("");render();
   }catch(e){msg("Não consegui abrir essa imagem. Use um arquivo PNG ou JPG.")}
  }
+ /* Adicionar à agenda: arquivo .ics (padrão iCalendar) que Outlook, Google Agenda e celular abrem como compromisso.
+    - Horário gravado em UTC a partir do fuso deste computador: todos os calendários leem igual, sem bloco de fuso no arquivo.
+    - Sem término: 1 hora. Término antes do início: termina no dia seguinte. Sem horário: dia inteiro. Lembrete 30 min antes.
+    - Mesmo convite (tipo + título + data) gera o mesmo identificador: mudar só o horário e mandar de novo tende a atualizar
+      o compromisso em vez de duplicar (depende do calendário de quem recebe).
+    - Não envia convite nem colhe confirmação de presença: para isso, quem organiza abre o arquivo no Outlook e convida por lá. */
+ const icsTxt=t=>String(t).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n");
+ /* Linhas de no máximo 75 bytes; a continuação começa com espaço. Não corta caractere acentuado no meio. */
+ function dobra(l){
+  const enc=new TextEncoder(),out=[];let atual="",n=0;
+  for(const ch of l){const b=enc.encode(ch).length;if(n+b>(out.length?74:75)){out.push(atual);atual="";n=0}atual+=ch;n+=b}
+  out.push(atual);return out.join("\r\n ");
+ }
+ const utc=d=>d.toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
+ const ymd=d=>`${d.getFullYear()}${dois(d.getMonth()+1)}${dois(d.getDate())}`;
+ function hash(t){let a=0x811c9dc5,b=0x01000193;for(const ch of t){const k=ch.codePointAt(0);a=Math.imul(a^k,16777619)>>>0;b=Math.imul(b^k,2246822519)>>>0}
+  return a.toString(16).padStart(8,"0")+b.toString(16).padStart(8,"0")}
+ function agenda(){
+  const e=atual(),tp=TIPOS_CV[e.tipo],tem=k=>tp.campos.includes(k),t=k=>tem(k)?String(e[k]||"").trim():"";
+  if(!tem("inicio"))return{erro:"Este tipo de convite não vai para a agenda."};
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(e.data||"");
+  if(!m)return{erro:e.tipo==="aniversariantes"?"Preencha a data da comemoração para gerar o arquivo da agenda.":"Preencha a data para gerar o arquivo da agenda."};
+  const dia=(h,mi)=>new Date(+m[1],+m[2]-1,+m[3],h||0,mi||0);
+  const hi=/^(\d{1,2}):(\d{2})/.exec(t("inicio")),hf=tem("fim")?/^(\d{1,2}):(\d{2})/.exec(t("fim")):null;
+  let quando,umaHora=false,diaSeguinte=false,alarme=false;
+  if(hi){
+   const ini=dia(+hi[1],+hi[2]);let fim=hf?dia(+hf[1],+hf[2]):null;
+   if(!fim||fim.getTime()===ini.getTime()){fim=new Date(ini.getTime()+36e5);umaHora=true}
+   else if(fim<ini){fim.setDate(fim.getDate()+1);diaSeguinte=true}
+   quando=[`DTSTART:${utc(ini)}`,`DTEND:${utc(fim)}`];alarme=true;
+  }else{const d2=dia();d2.setDate(d2.getDate()+1);quando=[`DTSTART;VALUE=DATE:${ymd(dia())}`,`DTEND;VALUE=DATE:${ymd(d2)}`]}
+  const titulo=t("titulo")||tp.nome,resumo=e.tipo==="aniversariantes"?"Comemoração: "+(t("titulo")||"Aniversariantes do mês"):titulo;
+  const desc=[];
+  if(t("publico"))desc.push("Para: "+t("publico"));
+  if(e.tipo==="aniversariantes"){const P=aniversariantesDe(e.nomes);
+   if(P.length)desc.push("Aniversariantes:\n"+P.map(x=>`${x.dia?x.dia+" – ":""}${x.nome}${x.setor?` (${x.setor})`:""}`).join("\n"))}
+  if(t("texto"))desc.push(tp.lista?`${tp.rot.texto}:\n`+itens(e.texto).map(x=>"• "+x.replace(/[;.]\s*$/,"")).join("\n"):t("texto"));
+  if(t("obs"))desc.push(t("obs"));
+  const agora=new Date();
+  const L=["BEGIN:VCALENDAR","VERSION:2.0",`PRODID:-//Patrimar Moveis//Gerador de Convites ${VERSAO}//PT`,"CALSCALE:GREGORIAN","METHOD:PUBLISH",
+   "BEGIN:VEVENT",`UID:${hash(e.tipo+"|"+titulo.toLowerCase()+"|"+e.data)}@gerador-patrimar`,`DTSTAMP:${utc(agora)}`,
+   `SEQUENCE:${Math.max(0,Math.floor((agora.getTime()-Date.UTC(2026,0,1))/6e4))}`,...quando,
+   `SUMMARY:${icsTxt(resumo)}`];
+  if(t("local"))L.push(`LOCATION:${icsTxt(t("local"))}`);
+  if(desc.length)L.push(`DESCRIPTION:${icsTxt(desc.join("\n\n"))}`);
+  if(alarme)L.push("BEGIN:VALARM","ACTION:DISPLAY",`DESCRIPTION:${icsTxt(resumo)}`,"TRIGGER:-PT30M","END:VALARM");
+  L.push("END:VEVENT","END:VCALENDAR");
+  return{ics:L.map(dobra).join("\r\n")+"\r\n",umaHora,diaSeguinte,diaInteiro:!hi};
+ }
+ async function baixarAgenda(){
+  const m=t=>{$("cvAgendaMsg").textContent=t},bt=$("cvAgenda");m("");
+  const r=agenda();if(r.erro){m(r.erro);if(!$("cv_data").value)$("cv_data").focus();return}
+  const nome=nomeBase()+".ics",blob=new Blob([r.ics],{type:"text/calendar;charset=utf-8"});
+  const obs=r.diaInteiro?" Sem horário: ficou como compromisso de dia inteiro.":r.umaHora?" Sem término: ficou com 1 hora.":r.diaSeguinte?" O término é antes do início: ficou para o dia seguinte.":"";
+  bt.disabled=true;
+  try{
+   if(window.claude&&window.claude.use){
+    const d=await window.claude.use("downloads");if(!d){m("Este navegador não deixou salvar o arquivo.");return}
+    await d.save({filename:nome,data:blob});
+   }else{
+    const arq=new File([blob],nome,{type:"text/calendar"});
+    if(compartilha(arq)){await navigator.share({files:[arq]});m(`Arquivo da agenda pronto: ${nome}.${obs}`);return}
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=nome;a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+   }
+   m(`Arquivo salvo: ${nome}. Abra para incluir na sua agenda, ou anexe no e-mail para os participantes.${obs}`);
+  }catch(e){m(e&&(e.name==="AbortError"||e.code==="declined")?"Cancelado.":"Não foi possível salvar o arquivo da agenda.")}
+  finally{bt.disabled=false}
+ }
  function ligar(){
   $("cvTipos").replaceChildren(...Object.entries(TIPOS_CV).map(([k,t])=>{
    const l=document.createElement("label"),i=document.createElement("input");l.className="tipo";
@@ -1729,7 +1806,7 @@ const convites=(()=>{
   $("versaoCv").textContent="Versão "+VERSAO;
   $("formCv").addEventListener("input",ev=>{
    const t=ev.target;if(t.type==="file"||t.name==="cvTipo")return;
-   const d=dados();CAMPOS_CV.forEach(k=>{d[k]=$("cv_"+k).value});salva();render();
+   const d=dados();CAMPOS_CV.forEach(k=>{d[k]=$("cv_"+k).value});salva();render();$("cvAgendaMsg").textContent="";
   });
   $("formCv").addEventListener("change",ev=>{if(ev.target.name==="cvTipo")trocaTipo(ev.target.value)});
   $("formCv").addEventListener("submit",ev=>ev.preventDefault());
@@ -1745,6 +1822,7 @@ const convites=(()=>{
   $("cvBaixar").onclick=baixar;
   $("cvBaixar3").onclick=()=>baixarTodas(false);
   $("cvCopia").onclick=copia;
+  $("cvAgenda").onclick=baixarAgenda;
  }
  return{ligar,render};
 })();

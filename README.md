@@ -44,6 +44,12 @@ Aba **Convites**, no topo da tela. Tem formulário, prévia e botões de salvar 
 - **Salvar:** igual à vaga (Salvar as 3 artes, Só [formato], Copiar texto), com pasta própria: no app instalado, a pasta escolhida para convites é lembrada separada da de vagas. Cada convite ganha uma pasta com o nome dele.
 - **Nome do arquivo:** título + data, para a reunião desta semana não substituir a da semana passada. Ex.: `Reunião de resultados - 13-11-2026 - Post.png`, `Aniversário Maria da Silva - Mural A4.png`.
 - **Copiar texto:** monta a mensagem com data por extenso, horário, local e pauta, com emojis, para mandar junto com a arte no WhatsApp ou no e-mail.
+- **Adicionar à agenda:** botão em "Quando e onde" (Reunião, Treinamento, Evento e comemoração dos Aniversariantes). Gera um arquivo `.ics` com título, data, horário, local, pauta e lembrete 30 minutos antes, que o Outlook, o Google Agenda e o celular abrem como compromisso.
+  - **O que ele não faz:** não envia convite nem colhe confirmação de presença. Para isso, quem organiza abre o arquivo no Outlook e convida os participantes por lá. Também dá para anexar o arquivo no e-mail ou no WhatsApp.
+  - **Regras:** sem término, o compromisso fica com 1 hora. Término antes do início (ex.: 20h às 1h) termina no dia seguinte. Sem horário, vira compromisso de dia inteiro. A mensagem ao lado do botão avisa qual regra foi usada.
+  - **Horário:** gravado em UTC a partir do fuso do computador que gerou o arquivo. O relógio desse computador precisa estar no fuso da fábrica.
+  - **Mesmo convite, mesmo identificador** (tipo + título + data): mudar só o horário e mandar de novo tende a atualizar o compromisso em vez de duplicar, mas isso depende do calendário de quem recebe. Mudou o dia: é um compromisso novo; peça para apagarem o antigo.
+  - **Google Agenda no computador:** o arquivo não abre sozinho; use Configurações › Importar e exportar › Importar.
 - **Logomarca:** a mesma da aba Vagas (Enviar logomarca, na aba Vagas, vale para as duas).
 - **Abrir direto numa aba:** a última aba usada é lembrada. O endereço com `#vagas` ou `#convites` abre direto nela; no app instalado, clique com o botão direito no ícone para escolher.
 - **Mudar textos de exemplo ou incluir um tipo:** constante `TIPOS_CV` no `index.html` (o ícone novo vai em `ICONES`).
@@ -83,6 +89,7 @@ A versão fica em um lugar só: a constante `VERSAO`, no `index.html`. Ela apare
 Ao publicar uma mudança, aumente a versão (ex.: `1.1.0` → `1.2.0`). O `sw.js` lê esse número e renova a cópia offline sozinho. Não é preciso editar o `sw.js`.
 
 ### Histórico
+- **1.7.0**: botão Adicionar à agenda nos convites (arquivo `.ics` para Outlook, Google Agenda e celular, com lembrete 30 minutos antes).
 - **1.6.0**: aba Convites (reunião, treinamento, evento, aniversário e aniversariantes do mês) com artes de post, status e mural A4, texto para copiar e pasta própria; abas Vagas e Convites no topo, com a última aberta lembrada.
 - **1.5.1**: Salvar as 3 artes cria uma pasta com o nome da vaga dentro da pasta escolhida.
 - **1.5.0**: botão Salvar as 3 artes (pasta lembrada no app instalado; compartilhar as 3 no celular); botão Copiar legenda com hashtags geradas do cargo e da cidade; aviso de texto que não coube em algum formato.
