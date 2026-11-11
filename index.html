@@ -409,7 +409,7 @@ const EXEMPLO={
 const CAMPOS=["cargo","local","chamada","requisitos","diferencial","atividades","extras","telefone","email"];
 const CHAVE="geradorVagas.v1";
 /* Versão do aplicativo: fonte única. Ao publicar mudança, aumente aqui; o sw.js renova o cache sozinho. */
-const VERSAO="1.7.0";
+const VERSAO="1.7.1";
 
 function ler(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
 function gravar(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
@@ -1157,6 +1157,17 @@ function compartilha(arq){
 function salvaComo(){
  try{return typeof window.showSaveFilePicker==="function"&&window.self===window.top&&!matchMedia("(pointer:coarse)").matches}catch(e){return false}
 }
+/* Erros ao salvar. "Cancelado" só quando quem clicou fechou a janela ou negou o acesso.
+   Falha ao gravar o arquivo (aberto em outro programa, antivírus, disco) é outra coisa: a mensagem mostra o motivo. */
+const detalheErro=e=>{const t=[e&&e.name,e&&e.message].filter(Boolean).join(" – ").replace(/[.\s]+$/,"");return t?` Detalhe: ${t}.`:""};
+const cancelouPasta=ex=>`Salvamento cancelado: a janela da pasta foi fechada ou o acesso foi negado. Clique de novo, escolha ou crie uma pasta (ex.: Imagens › ${ex}) e permita editar os arquivos quando o navegador perguntar. A raiz de Downloads, Documentos e Área de Trabalho o navegador não aceita.`;
+const falhaGravar=(onde,e)=>e&&e.name==="NotAllowedError"
+ ?`O navegador não deixou gravar em ${onde}. Clique de novo e permita editar os arquivos quando ele perguntar.`
+ :`Não foi possível gravar em ${onde}. Se alguma arte estiver aberta em outro programa, feche e tente de novo.${detalheErro(e)}`;
+async function gravaArquivo(h,dados){
+ const w=await h.createWritable();
+ try{await w.write(dados);await w.close()}catch(e){try{await w.abort()}catch(_){}throw e}
+}
 /* Download */
 async function baixar(){
  const bt=$("baixar"),msg=$("msg");msg.textContent="";
@@ -1175,16 +1186,19 @@ async function baixar(){
    if(compartilha(arq)){
     await navigator.share({files:[arq]});msg.textContent="Arte pronta: "+nome;return;
    }
+   let h=null,falhou=null;
    if(salvaComo()){
-    try{
-     const h=await window.showSaveFilePicker({suggestedName:nome,id:"vagas-patrimar",startIn:"downloads",
-      types:[{description:"Imagem PNG",accept:{"image/png":[".png"]}}]});
-     const w=await h.createWritable();await w.write(blob);await w.close();
-     msg.textContent="Arte salva: "+h.name;return;
-    }catch(e){if(e&&e.name==="AbortError")throw e}/* sem permissão para a janela: segue no download comum */
+    try{h=await window.showSaveFilePicker({suggestedName:nome,id:"vagas-patrimar",startIn:"downloads",
+      types:[{description:"Imagem PNG",accept:{"image/png":[".png"]}}]})}
+    catch(e){if(e&&e.name==="AbortError")throw e}/* sem permissão para a janela: segue no download comum */
+    if(h){
+     try{await gravaArquivo(h,blob);msg.textContent="Arte salva: "+h.name;return}
+     catch(e){falhou=e}/* não gravou no local escolhido: segue no download comum */
+    }
    }
    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=nome;a.click();
-   setTimeout(()=>URL.revokeObjectURL(a.href),4000);msg.textContent="Arte salva: "+nome;
+   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+   msg.textContent=falhou?`Não foi possível gravar em ${h.name}; a arte foi baixada pelo navegador (pasta Downloads): ${nome}.${detalheErro(falhou)}`:"Arte salva: "+nome;
   }
  }catch(e){
   if(e&&(e.code==="declined"||e.name==="AbortError"))msg.textContent="Salvamento cancelado.";
@@ -1242,7 +1256,7 @@ async function geraArtes(){
 async function baixarTodas(trocar){
  const bt=$("baixar3"),msg=$("msg");msg.textContent="";
  guardaModelo();bt.disabled=true;
- let pasta=null;
+ let pasta=null,sub=null,gravando=false;
  try{
   /* A janela de pasta precisa abrir logo após o clique: escolhe o destino antes de desenhar */
   if(usaPasta()){
@@ -1258,8 +1272,10 @@ async function baixarTodas(trocar){
    msg.textContent="3 artes salvas."+aviso;
   }else if(pasta){
    /* Cada vaga na sua pasta: Vagas > Operador de CNC. Salvar de novo a mesma vaga substitui os arquivos. */
-   const sub=await pasta.getDirectoryHandle(nomePastaVaga(),{create:true});
-   for(const a of arqs){const fh=await sub.getFileHandle(a.name,{create:true}),w=await fh.createWritable();await w.write(a);await w.close()}
+   gravando=true;
+   sub=await pasta.getDirectoryHandle(nomePastaVaga(),{create:true});
+   for(const a of arqs)await gravaArquivo(await sub.getFileHandle(a.name,{create:true}),a);
+   gravando=false;
    msg.textContent=`3 artes salvas em ${pasta.name} › ${sub.name}.${aviso}`;
    if(lembraPasta()){const tb=document.createElement("button");tb.type="button";tb.className="bt mini";tb.textContent="Trocar pasta";tb.onclick=()=>baixarTodas(true);msg.append(tb)}
   }else if(compartilhaVarios(arqs)){
@@ -1271,12 +1287,13 @@ async function baixarTodas(trocar){
   }
  }catch(e){
   const n=e&&e.name;
-  if(n==="AbortError"||(e&&e.code==="declined"))msg.textContent="Salvamento cancelado.";
-  else if(n==="NotFoundError"&&pasta){await pastaDB.apagar();msg.textContent=`A pasta ${pasta.name} não foi encontrada. Clique de novo para escolher outra.`}
+  if(n==="NotFoundError"&&pasta){await pastaDB.apagar();msg.textContent=`A pasta ${pasta.name} não foi encontrada. Clique de novo para escolher outra.`}
+  else if(gravando)msg.textContent=falhaGravar(sub?`${pasta.name} › ${sub.name}`:pasta.name,e);
+  else if(n==="AbortError"||(e&&e.code==="declined"))msg.textContent=usaPasta()&&!pasta?cancelouPasta("Vagas"):"Salvamento cancelado.";
   else if(n==="SecurityError"&&usaPasta())msg.textContent="O navegador pediu um novo clique para abrir a pasta. Clique de novo em "+bt.textContent+".";
   else if(n==="NotAllowedError")msg.textContent="O navegador pediu um novo toque. Clique de novo em "+bt.textContent+".";
   else if(e&&e.code==="rate_limited")msg.textContent="Já existe uma confirmação aberta. Responda a ela e tente de novo.";
-  else msg.textContent="Não foi possível salvar as 3 artes. Use o botão de uma arte por vez.";
+  else msg.textContent="Não foi possível salvar as 3 artes. Use o botão de uma arte por vez."+detalheErro(e);
  }finally{bt.disabled=false}
 }
 
@@ -1610,13 +1627,18 @@ const convites=(()=>{
    }
    const arq=new File([b],nome,{type:"image/png"});
    if(compartilha(arq)){await navigator.share({files:[arq]});msg("Arte pronta: "+nome);return}
+   let h=null,falhou=null;
    if(salvaComo()){
-    try{const h=await window.showSaveFilePicker({suggestedName:nome,id:JANELA,startIn:"downloads",types:[{description:"Imagem PNG",accept:{"image/png":[".png"]}}]});
-     const w=await h.createWritable();await w.write(b);await w.close();msg("Arte salva: "+h.name);return}
+    try{h=await window.showSaveFilePicker({suggestedName:nome,id:JANELA,startIn:"downloads",types:[{description:"Imagem PNG",accept:{"image/png":[".png"]}}]})}
     catch(e){if(e&&e.name==="AbortError")throw e}/* sem permissão para a janela: segue no download comum */
+    if(h){
+     try{await gravaArquivo(h,b);msg("Arte salva: "+h.name);return}
+     catch(e){falhou=e}/* não gravou no local escolhido: segue no download comum */
+    }
    }
    const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=nome;a.click();
-   setTimeout(()=>URL.revokeObjectURL(a.href),4000);msg("Arte salva: "+nome);
+   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+   msg(falhou?`Não foi possível gravar em ${h.name}; a arte foi baixada pelo navegador (pasta Downloads): ${nome}.${detalheErro(falhou)}`:"Arte salva: "+nome);
   }catch(e){
    if(e&&(e.code==="declined"||e.name==="AbortError"))msg("Salvamento cancelado.");
    else if(e&&e.code==="rate_limited")msg("Já existe uma confirmação aberta. Responda a ela e tente de novo.");
@@ -1639,7 +1661,7 @@ const convites=(()=>{
  /* Salvar as 3 artes: mesmo funcionamento da vaga, mas com pasta própria (ex.: Convites › Reunião de resultados - 13-11-2026) */
  async function baixarTodas(trocar){
   const bt=$("cvBaixar3"),m=$("cvMsg");m.textContent="";bt.disabled=true;
-  let pasta=null;
+  let pasta=null,sub=null,gravando=false;
   try{
    if(usaPasta()){
     if(!lembraPasta())m.textContent="Escolha a pasta para as 3 artes.";
@@ -1653,8 +1675,10 @@ const convites=(()=>{
     for(const a of arqs)await d.save({filename:a.name,data:a});
     m.textContent="3 artes salvas."+aviso;
    }else if(pasta){
-    const sub=await pasta.getDirectoryHandle(nomePasta(),{create:true});
-    for(const a of arqs){const fh=await sub.getFileHandle(a.name,{create:true}),w=await fh.createWritable();await w.write(a);await w.close()}
+    gravando=true;
+    sub=await pasta.getDirectoryHandle(nomePasta(),{create:true});
+    for(const a of arqs)await gravaArquivo(await sub.getFileHandle(a.name,{create:true}),a);
+    gravando=false;
     m.textContent=`3 artes salvas em ${pasta.name} › ${sub.name}.${aviso}`;
     if(lembraPasta()){const tb=document.createElement("button");tb.type="button";tb.className="bt mini";tb.textContent="Trocar pasta";tb.onclick=()=>baixarTodas(true);m.append(tb)}
    }else if(compartilhaVarios(arqs)){
@@ -1666,12 +1690,13 @@ const convites=(()=>{
    }
   }catch(e){
    const n=e&&e.name;
-   if(n==="AbortError"||(e&&e.code==="declined"))m.textContent="Salvamento cancelado.";
-   else if(n==="NotFoundError"&&pasta){await pastaDB.apagar(PASTA);m.textContent=`A pasta ${pasta.name} não foi encontrada. Clique de novo para escolher outra.`}
+   if(n==="NotFoundError"&&pasta){await pastaDB.apagar(PASTA);m.textContent=`A pasta ${pasta.name} não foi encontrada. Clique de novo para escolher outra.`}
+   else if(gravando)m.textContent=falhaGravar(sub?`${pasta.name} › ${sub.name}`:pasta.name,e);
+   else if(n==="AbortError"||(e&&e.code==="declined"))m.textContent=usaPasta()&&!pasta?cancelouPasta("Convites"):"Salvamento cancelado.";
    else if(n==="SecurityError"&&usaPasta())m.textContent="O navegador pediu um novo clique para abrir a pasta. Clique de novo em "+bt.textContent+".";
    else if(n==="NotAllowedError")m.textContent="O navegador pediu um novo toque. Clique de novo em "+bt.textContent+".";
    else if(e&&e.code==="rate_limited")m.textContent="Já existe uma confirmação aberta. Responda a ela e tente de novo.";
-   else m.textContent="Não foi possível salvar as 3 artes. Use o botão de uma arte por vez.";
+   else m.textContent="Não foi possível salvar as 3 artes. Use o botão de uma arte por vez."+detalheErro(e);
   }finally{bt.disabled=false}
  }
  /* Texto para mandar junto com a arte no WhatsApp ou no e-mail */
