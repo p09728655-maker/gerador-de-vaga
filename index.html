@@ -409,7 +409,7 @@ const EXEMPLO={
 const CAMPOS=["cargo","local","chamada","requisitos","diferencial","atividades","extras","telefone","email"];
 const CHAVE="geradorVagas.v1";
 /* Versão do aplicativo: fonte única. Ao publicar mudança, aumente aqui; o sw.js renova o cache sozinho. */
-const VERSAO="1.7.0";
+const VERSAO="1.7.1";
 
 function ler(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
 function gravar(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
@@ -1219,7 +1219,11 @@ const pastaDB=(()=>{
   gravar:(h,k="pasta")=>op("readwrite",s=>s.put(h,k)).catch(()=>{}),
   apagar:(k="pasta")=>op("readwrite",s=>s.delete(k)).catch(()=>{})};
 })();
-async function pastaParaSalvar(trocar,k="pasta",id="vagas-patrimar"){
+/* A janela de pasta tem identificador próprio (vagas-pasta, convites-pasta), separado do "Salvar como" de uma arte só,
+   que abre em Downloads. O Chrome lembra o último lugar por identificador: com o mesmo, a janela de pasta abria em Downloads,
+   "Selecionar pasta" ali escolhia a própria Downloads, que o navegador recusa, e fechar o aviso virava "Salvamento cancelado". */
+const semPasta=ex=>`Nenhuma pasta foi escolhida. Se o navegador recusou a pasta, é porque ele não aceita Downloads, Documentos ou Área de Trabalho inteiras: crie uma pasta dentro delas (ex.: ${ex}) e escolha essa pasta.`;
+async function pastaParaSalvar(trocar,k="pasta",id="vagas-pasta"){
  const h=trocar||!lembraPasta()?null:await pastaDB.ler(k);
  if(h){try{let p=await h.queryPermission({mode:"readwrite"});if(p!=="granted")p=await h.requestPermission({mode:"readwrite"});if(p==="granted")return h}catch(e){}}
  const nova=await window.showDirectoryPicker({id,mode:"readwrite",startIn:"pictures"});
@@ -1242,13 +1246,13 @@ async function geraArtes(){
 async function baixarTodas(trocar){
  const bt=$("baixar3"),msg=$("msg");msg.textContent="";
  guardaModelo();bt.disabled=true;
- let pasta=null;
+ let pasta=null,naPasta=false;
  try{
   /* A janela de pasta precisa abrir logo após o clique: escolhe o destino antes de desenhar */
   if(usaPasta()){
    if(!lembraPasta())msg.textContent="Escolha a pasta para as 3 artes.";
-   else if(trocar||!(await pastaDB.ler()))msg.textContent="Escolha ou crie uma pasta para as artes, por exemplo Vagas. As próximas vão direto para ela.";
-   pasta=await pastaParaSalvar(trocar);msg.textContent=""}
+   else if(trocar||!(await pastaDB.ler()))msg.textContent="Escolha ou crie uma pasta para as artes, por exemplo Vagas dentro de Imagens. As próximas vão direto para ela.";
+   naPasta=true;pasta=await pastaParaSalvar(trocar);naPasta=false;msg.textContent=""}
   const{arqs,apertou}=await geraArtes();
   const aviso=apertou.length?` Atenção: o texto não coube em ${apertou.join(" e ")}; confira ${apertou.length>1?"essas artes":"essa arte"}.`:"";
   if(window.claude&&window.claude.use){
@@ -1271,12 +1275,12 @@ async function baixarTodas(trocar){
   }
  }catch(e){
   const n=e&&e.name;
-  if(n==="AbortError"||(e&&e.code==="declined"))msg.textContent="Salvamento cancelado.";
+  if(n==="AbortError"||(e&&e.code==="declined"))msg.textContent=naPasta?semPasta("Vagas"):"Salvamento cancelado.";
   else if(n==="NotFoundError"&&pasta){await pastaDB.apagar();msg.textContent=`A pasta ${pasta.name} não foi encontrada. Clique de novo para escolher outra.`}
   else if(n==="SecurityError"&&usaPasta())msg.textContent="O navegador pediu um novo clique para abrir a pasta. Clique de novo em "+bt.textContent+".";
   else if(n==="NotAllowedError")msg.textContent="O navegador pediu um novo toque. Clique de novo em "+bt.textContent+".";
   else if(e&&e.code==="rate_limited")msg.textContent="Já existe uma confirmação aberta. Responda a ela e tente de novo.";
-  else msg.textContent="Não foi possível salvar as 3 artes. Use o botão de uma arte por vez.";
+  else msg.textContent=`Não foi possível salvar as 3 artes${n?` (${n})`:""}. Use o botão de uma arte por vez.`;
  }finally{bt.disabled=false}
 }
 
@@ -1639,12 +1643,12 @@ const convites=(()=>{
  /* Salvar as 3 artes: mesmo funcionamento da vaga, mas com pasta própria (ex.: Convites › Reunião de resultados - 13-11-2026) */
  async function baixarTodas(trocar){
   const bt=$("cvBaixar3"),m=$("cvMsg");m.textContent="";bt.disabled=true;
-  let pasta=null;
+  let pasta=null,naPasta=false;
   try{
    if(usaPasta()){
     if(!lembraPasta())m.textContent="Escolha a pasta para as 3 artes.";
-    else if(trocar||!(await pastaDB.ler(PASTA)))m.textContent="Escolha ou crie uma pasta para os convites, por exemplo Convites. Os próximos vão direto para ela.";
-    pasta=await pastaParaSalvar(trocar,PASTA,JANELA);m.textContent=""}
+    else if(trocar||!(await pastaDB.ler(PASTA)))m.textContent="Escolha ou crie uma pasta para os convites, por exemplo Convites dentro de Imagens. Os próximos vão direto para ela.";
+    naPasta=true;pasta=await pastaParaSalvar(trocar,PASTA,"convites-pasta");naPasta=false;m.textContent=""}
    const{arqs,apertou}=await geraArtes();
    const aviso=apertou.length?` Atenção: o texto não coube em ${apertou.join(" e ")}; confira ${apertou.length>1?"essas artes":"essa arte"}.`:"";
    if(window.claude&&window.claude.use){
@@ -1666,12 +1670,12 @@ const convites=(()=>{
    }
   }catch(e){
    const n=e&&e.name;
-   if(n==="AbortError"||(e&&e.code==="declined"))m.textContent="Salvamento cancelado.";
+   if(n==="AbortError"||(e&&e.code==="declined"))m.textContent=naPasta?semPasta("Convites"):"Salvamento cancelado.";
    else if(n==="NotFoundError"&&pasta){await pastaDB.apagar(PASTA);m.textContent=`A pasta ${pasta.name} não foi encontrada. Clique de novo para escolher outra.`}
    else if(n==="SecurityError"&&usaPasta())m.textContent="O navegador pediu um novo clique para abrir a pasta. Clique de novo em "+bt.textContent+".";
    else if(n==="NotAllowedError")m.textContent="O navegador pediu um novo toque. Clique de novo em "+bt.textContent+".";
    else if(e&&e.code==="rate_limited")m.textContent="Já existe uma confirmação aberta. Responda a ela e tente de novo.";
-   else m.textContent="Não foi possível salvar as 3 artes. Use o botão de uma arte por vez.";
+   else m.textContent=`Não foi possível salvar as 3 artes${n?` (${n})`:""}. Use o botão de uma arte por vez.`;
   }finally{bt.disabled=false}
  }
  /* Texto para mandar junto com a arte no WhatsApp ou no e-mail */

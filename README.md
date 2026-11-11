@@ -24,7 +24,8 @@ Cada arquivo sai com o nome da vaga e a rede, por exemplo `Operador de Fresadora
 - **Salvar as 3 artes** (botão principal): gera Instagram, LinkedIn e status do WhatsApp de uma vez.
   - Computador (Chrome e Edge), **app instalado**: na primeira vez, escolha ou crie uma pasta (ex.: `Vagas`). As próximas vão direto para ela, sem perguntar; **Trocar pasta** aparece na mensagem.
   - Cada vaga ganha uma pasta com o nome do cargo dentro da pasta escolhida: `Vagas › Operador de CNC › Operador de CNC - Instagram.png`. Salvar de novo a mesma vaga substitui os arquivos dela. Vale também na aba do navegador. No celular e no download comum não há pasta da vaga. O navegador pode pedir permissão para editar a pasta; escolha "Permitir em todas as visitas".
-  - O navegador não aceita a raiz de Downloads, Documentos ou Área de Trabalho: crie uma pasta dentro delas.
+  - O navegador não aceita a raiz de Downloads, Documentos ou Área de Trabalho: crie uma pasta dentro delas. Se nenhuma pasta for escolhida (janela fechada ou pasta recusada), a mensagem explica isso; não aparece só "Salvamento cancelado".
+  - A janela de pasta lembra o último lugar escolhido nela, separado do "Salvar como" de uma arte só (que abre em Downloads). Na primeira vez, abre em Imagens.
   - Computador, **aba do navegador**: pergunta a pasta a cada vez, já abrindo na última usada. A pasta só fica guardada no app instalado, que sempre roda num perfil normal do navegador.
   - Celular: abre o compartilhar com as 3 imagens (Salvar imagens, WhatsApp, Drive).
   - Outros navegadores: baixa os 3 arquivos (o navegador pode pedir para permitir vários downloads).
@@ -89,6 +90,7 @@ A versão fica em um lugar só: a constante `VERSAO`, no `index.html`. Ela apare
 Ao publicar uma mudança, aumente a versão (ex.: `1.1.0` → `1.2.0`). O `sw.js` lê esse número e renova a cópia offline sozinho. Não é preciso editar o `sw.js`.
 
 ### Histórico
+- **1.7.1**: Salvar as 3 artes no computador: a janela de escolher pasta não abre mais em Downloads (lugar lembrado do "Salvar como" de uma arte só), onde "Selecionar pasta" escolhia a própria Downloads, recusada pelo navegador, e o app mostrava só "Salvamento cancelado". Agora a janela de pasta tem lugar lembrado próprio, começa em Imagens, e, se nenhuma pasta for escolhida, a mensagem explica o que fazer.
 - **1.7.0**: botão Adicionar à agenda nos convites (arquivo `.ics` para Outlook, Google Agenda e celular, com lembrete 30 minutos antes).
 - **1.6.0**: aba Convites (reunião, treinamento, evento, aniversário e aniversariantes do mês) com artes de post, status e mural A4, texto para copiar e pasta própria; abas Vagas e Convites no topo, com a última aberta lembrada.
 - **1.5.1**: Salvar as 3 artes cria uma pasta com o nome da vaga dentro da pasta escolhida.
