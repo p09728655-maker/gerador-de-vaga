@@ -89,6 +89,7 @@ A versão fica em um lugar só: a constante `VERSAO`, no `index.html`. Ela apare
 Ao publicar uma mudança, aumente a versão (ex.: `1.1.0` → `1.2.0`). O `sw.js` lê esse número e renova a cópia offline sozinho. Não é preciso editar o `sw.js`.
 
 ### Histórico
+- **1.7.3**: a janela de pasta que não abre agora é reconhecida pelo foco do app (o app perde o foco quando a janela aparece), não só pelo tempo; a nova tentativa começa em Downloads, que é onde o Salvar como funciona; a mensagem de cancelamento ganhou o botão Baixar em Downloads.
 - **1.7.2**: quando a janela de pasta ou de Salvar como volta "cancelada" em menos de 1 segundo (o Chrome não conseguiu abrir, ninguém cancelou), o app tenta de novo sem o local de partida guardado e passa a abrir assim neste navegador; se ainda não abrir, baixa as artes na pasta Downloads em vez de parar.
 - **1.7.1**: "Salvamento cancelado" só aparece quando a janela foi fechada ou o acesso negado, e diz como salvar; falha ao gravar o arquivo (arte aberta em outro programa, antivírus) mostra o motivo em vez de "cancelado"; no Só [formato], se não gravar no local escolhido, baixa na pasta Downloads.
 - **1.7.0**: botão Adicionar à agenda nos convites (arquivo `.ics` para Outlook, Google Agenda e celular, com lembrete 30 minutos antes).

@@ -409,7 +409,7 @@ const EXEMPLO={
 const CAMPOS=["cargo","local","chamada","requisitos","diferencial","atividades","extras","telefone","email"];
 const CHAVE="geradorVagas.v1";
 /* Versão do aplicativo: fonte única. Ao publicar mudança, aumente aqui; o sw.js renova o cache sozinho. */
-const VERSAO="1.7.2";
+const VERSAO="1.7.3";
 
 function ler(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
 function gravar(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
@@ -1160,7 +1160,22 @@ function salvaComo(){
 /* Erros ao salvar. "Cancelado" só quando quem clicou fechou a janela ou negou o acesso.
    Falha ao gravar o arquivo (aberto em outro programa, antivírus, disco) é outra coisa: a mensagem mostra o motivo. */
 const detalheErro=e=>{const t=[e&&e.name,e&&e.message].filter(Boolean).join(" – ").replace(/[.\s]+$/,"");return t?` Detalhe: ${t}.`:""};
-const cancelouPasta=ex=>`Salvamento cancelado: a janela da pasta foi fechada ou o acesso foi negado. Clique de novo, escolha ou crie uma pasta (ex.: Imagens › ${ex}) e permita editar os arquivos quando o navegador perguntar. A raiz de Downloads, Documentos e Área de Trabalho o navegador não aceita.`;
+const cancelouPasta=ex=>`Salvamento cancelado: a janela da pasta foi fechada ou o acesso foi negado. Clique de novo, escolha ou crie uma pasta (ex.: Imagens › ${ex}) e permita editar os arquivos quando o navegador perguntar. A raiz de Downloads, Documentos e Área de Trabalho o navegador não aceita. Ou baixe direto:`;
+/* Baixa pelo navegador, sem janela: vai para a pasta Downloads */
+async function baixaArquivos(arqs){
+ for(const a of arqs){const l=document.createElement("a");l.href=URL.createObjectURL(a);l.download=a.name;l.click();
+  setTimeout(()=>URL.revokeObjectURL(l.href),4000);await new Promise(r=>setTimeout(r,250))}
+}
+/* Botão "Baixar em Downloads" na mensagem de cancelamento: saída garantida se a janela da pasta não funcionar */
+function botaoDownloads(gera,el){
+ const b=document.createElement("button");b.type="button";b.className="bt mini";b.textContent="Baixar em Downloads";
+ b.onclick=async()=>{b.disabled=true;
+  try{const{arqs,apertou}=await gera();await baixaArquivos(arqs);
+   el.textContent="3 artes baixadas na pasta Downloads. Se o navegador perguntar, permita baixar vários arquivos."
+    +(apertou.length?` Atenção: o texto não coube em ${apertou.join(" e ")}; confira.`:"")}
+  catch(e){el.textContent="Não foi possível baixar."+detalheErro(e)}};
+ return b;
+}
 const falhaGravar=(onde,e)=>e&&e.name==="NotAllowedError"
  ?`O navegador não deixou gravar em ${onde}. Clique de novo e permita editar os arquivos quando ele perguntar.`
  :`Não foi possível gravar em ${onde}. Se alguma arte estiver aberta em outro programa, feche e tente de novo.${detalheErro(e)}`;
@@ -1168,19 +1183,25 @@ async function gravaArquivo(h,dados){
  const w=await h.createWritable();
  try{await w.write(dados);await w.close()}catch(e){try{await w.abort()}catch(_){}throw e}
 }
-/* Janela do Windows (pasta ou Salvar como) que volta "cancelada" em menos de 1 s não foi fechada por ninguém:
-   o navegador não conseguiu abrir. Causa mais provável: o local de partida que o Chrome guardou para essa janela
-   não serve mais. Então tenta de novo sem local guardado e lembra disso neste navegador. Se nem assim abrir,
-   devolve SEM_JANELA e quem chamou baixa na pasta Downloads, em vez de parar. */
+/* Janela do Windows (pasta ou Salvar como) que volta "cancelada" sem ter aberto não foi fechada por ninguém:
+   o navegador não conseguiu abrir. Sinal de que abriu: o app perde o foco (blur) enquanto ela está na tela.
+   Voltar em menos de 1 s também conta como não aberta (ninguém cancela tão rápido).
+   Causa mais provável: o local de partida (Imagens, ou o que o Chrome guardou para essa janela) não abre neste
+   computador, por exemplo pasta redirecionada para o servidor. Então tenta de novo começando em Downloads, sem o local
+   guardado, e lembra disso neste navegador. Se nem assim abrir, devolve SEM_JANELA e quem chamou baixa em Downloads. */
 const SEM_JANELA="semJanela",JANELA_MIN_MS=1000;
 const semLocal={chave:id=>"janelaSemLocal:"+id,
  tem(id){try{return localStorage.getItem(this.chave(id))==="1"}catch(e){return false}},
  marca(id){try{localStorage.setItem(this.chave(id),"1")}catch(e){}}};
 async function abreJanela(id,startIn,abrir){
- const tenta=async o=>{const t0=performance.now();
-  try{return await abrir(o)}catch(e){if(e&&e.name==="AbortError"&&performance.now()-t0<JANELA_MIN_MS)return SEM_JANELA;throw e}};
+ const tenta=async o=>{
+  const t0=performance.now();let abriu=false;const saiu=()=>{abriu=true};
+  window.addEventListener("blur",saiu);
+  try{return await abrir(o)}
+  catch(e){if(e&&e.name==="AbortError"&&(!abriu||performance.now()-t0<JANELA_MIN_MS))return SEM_JANELA;throw e}
+  finally{window.removeEventListener("blur",saiu)}};
  if(!semLocal.tem(id)){const r=await tenta({id,startIn});if(r!==SEM_JANELA)return r;semLocal.marca(id)}
- return tenta({});
+ return tenta({startIn:"downloads"});
 }
 /* Download */
 async function baixar(){
@@ -1299,8 +1320,7 @@ async function baixarTodas(trocar){
   }else if(compartilhaVarios(arqs)){
    await navigator.share({files:arqs});msg.textContent="Artes prontas."+aviso;
   }else{
-   for(const a of arqs){const l=document.createElement("a");l.href=URL.createObjectURL(a);l.download=a.name;l.click();
-    setTimeout(()=>URL.revokeObjectURL(l.href),4000);await new Promise(r=>setTimeout(r,250))}
+   await baixaArquivos(arqs);
    msg.textContent=(semJanela?"O navegador não conseguiu abrir a janela para escolher a pasta, então as 3 artes foram baixadas na pasta Downloads.":"3 artes baixadas.")
     +" Se o navegador perguntar, permita baixar vários arquivos."+aviso;
   }
@@ -1308,7 +1328,9 @@ async function baixarTodas(trocar){
   const n=e&&e.name;
   if(n==="NotFoundError"&&pasta){await pastaDB.apagar();msg.textContent=`A pasta ${pasta.name} não foi encontrada. Clique de novo para escolher outra.`}
   else if(gravando)msg.textContent=falhaGravar(sub?`${pasta.name} › ${sub.name}`:pasta.name,e);
-  else if(n==="AbortError"||(e&&e.code==="declined"))msg.textContent=usaPasta()&&!pasta?cancelouPasta("Vagas"):"Salvamento cancelado.";
+  else if(n==="AbortError"||(e&&e.code==="declined")){
+   if(usaPasta()&&!pasta){msg.textContent=cancelouPasta("Vagas");msg.append(botaoDownloads(geraArtes,msg))}
+   else msg.textContent="Salvamento cancelado.";}
   else if(n==="SecurityError"&&usaPasta())msg.textContent="O navegador pediu um novo clique para abrir a pasta. Clique de novo em "+bt.textContent+".";
   else if(n==="NotAllowedError")msg.textContent="O navegador pediu um novo toque. Clique de novo em "+bt.textContent+".";
   else if(e&&e.code==="rate_limited")msg.textContent="Já existe uma confirmação aberta. Responda a ela e tente de novo.";
@@ -1706,8 +1728,7 @@ const convites=(()=>{
    }else if(compartilhaVarios(arqs)){
     await navigator.share({files:arqs});m.textContent="Artes prontas."+aviso;
    }else{
-    for(const a of arqs){const l=document.createElement("a");l.href=URL.createObjectURL(a);l.download=a.name;l.click();
-     setTimeout(()=>URL.revokeObjectURL(l.href),4000);await new Promise(r=>setTimeout(r,250))}
+    await baixaArquivos(arqs);
     m.textContent=(semJanela?"O navegador não conseguiu abrir a janela para escolher a pasta, então as 3 artes foram baixadas na pasta Downloads.":"3 artes baixadas.")
      +" Se o navegador perguntar, permita baixar vários arquivos."+aviso;
    }
@@ -1715,7 +1736,9 @@ const convites=(()=>{
    const n=e&&e.name;
    if(n==="NotFoundError"&&pasta){await pastaDB.apagar(PASTA);m.textContent=`A pasta ${pasta.name} não foi encontrada. Clique de novo para escolher outra.`}
    else if(gravando)m.textContent=falhaGravar(sub?`${pasta.name} › ${sub.name}`:pasta.name,e);
-   else if(n==="AbortError"||(e&&e.code==="declined"))m.textContent=usaPasta()&&!pasta?cancelouPasta("Convites"):"Salvamento cancelado.";
+   else if(n==="AbortError"||(e&&e.code==="declined")){
+    if(usaPasta()&&!pasta){m.textContent=cancelouPasta("Convites");m.append(botaoDownloads(geraArtes,m))}
+    else m.textContent="Salvamento cancelado.";}
    else if(n==="SecurityError"&&usaPasta())m.textContent="O navegador pediu um novo clique para abrir a pasta. Clique de novo em "+bt.textContent+".";
    else if(n==="NotAllowedError")m.textContent="O navegador pediu um novo toque. Clique de novo em "+bt.textContent+".";
    else if(e&&e.code==="rate_limited")m.textContent="Já existe uma confirmação aberta. Responda a ela e tente de novo.";
